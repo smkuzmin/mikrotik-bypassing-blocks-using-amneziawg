@@ -104,9 +104,10 @@ modprobe amneziawg  2>/dev/null
 ```
 
 3. **Настраиваем интерфейс AmneziaWG через веб-интерфейс**
-   
+
  - **Network** -> **Interfaces** -> **Add new interface..** -> Name: `awg0`, Protocol: `AmneziaWG VPN` -> **Create interface**.
- - Import configuration: **Load configuration..** -> Вставляем конфиг клиента AmneziaWG в пустое поле.
+ - Import configuration: **Load configuration..**
+ - Скачиваем конфиг AmneziaWG с сайта [WARP Генератор](https://warp-generator.github.io/) или вставляем свой в пустое поле.
  - **Import settings** -> **OK**.
  - **Save & Apply**.
 
@@ -811,4 +812,3 @@ C:\>tracert googlevideo.com
  - [Диапазон IP-адресов Instagram, Netflix, ChatGPT, Youtube, Twitter](https://rockblack.su/vpn/dopolnitelno/diapazon-ip-adresov)
 
 ***
-
