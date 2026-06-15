@@ -766,7 +766,7 @@ add action=change-mss chain=forward comment="CLAMP MSS FOR TCP SYN FROM BYPASS-V
 ```bash
 /ip firewall nat
 add action=accept     chain=srcnat comment="ACCEPT ALL FROM PRIVATE-LANS TO PRIVATE-LANS FOR VPN" dst-address-list=PRIVATE-LANS src-address-list=PRIVATE-LANS
-add action=masquerade chain=srcnat comment="MASQ ALL FROM PRIVATE-LANS MARKED AS BYPASS-VPN --> VPN-GATEWAY" out-interface=bridge-awg routing-mark=bypass-vpn src-address-list=PRIVATE-LANS
+add action=masquerade chain=srcnat comment="MASQ ALL FROM PRIVATE-LANS MARKED AS BYPASS-VPN --> BYPASS-VPN-IF" out-interface=bridge-awg routing-mark=bypass-vpn src-address-list=PRIVATE-LANS
 ```
 
 9. **Настраиваем маршрутизацию VPN-трафика через интерфейс bridge-awg**
