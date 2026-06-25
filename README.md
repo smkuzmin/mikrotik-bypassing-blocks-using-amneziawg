@@ -355,28 +355,26 @@ add address=185.76.151.0/24    list=TELEGRAM
 /ip firewall address-list
 remove [find dynamic=no list=TORRENTS]
 :delay 5s
-add address=3.135.72.151       list=TORRENTS
-add address=3.140.119.203      list=TORRENTS
-add address=5.45.74.7          list=TORRENTS
-add address=18.219.255.217     list=TORRENTS
-add address=37.1.219.253       list=TORRENTS
-add address=37.221.67.160      list=TORRENTS
-add address=45.137.66.127      list=TORRENTS
-add address=104.21.7.164       list=TORRENTS
-add address=104.21.12.243      list=TORRENTS
-add address=104.21.32.39       list=TORRENTS
-add address=104.21.95.93       list=TORRENTS
-add address=168.119.95.238     list=TORRENTS
-add address=172.67.136.246     list=TORRENTS
-add address=172.67.144.20      list=TORRENTS
-add address=172.67.153.242     list=TORRENTS
-add address=172.67.182.196     list=TORRENTS
-add address=185.81.128.108     list=TORRENTS
-add address=188.114.96.1       list=TORRENTS
-add address=188.114.97.1       list=TORRENTS
-add address=188.137.178.236    list=TORRENTS
-add address=193.46.255.26      list=TORRENTS
-add address=193.46.255.28/31   list=TORRENTS
+add address=3.135.72.0/24      list=TORRENTS
+add address=3.140.119.0/24     list=TORRENTS
+add address=5.45.74.0/24       list=TORRENTS
+add address=18.219.255.0/24    list=TORRENTS
+add address=37.1.219.0/24      list=TORRENTS
+add address=37.221.67.0/24     list=TORRENTS
+add address=45.137.66.0/24     list=TORRENTS
+add address=104.21.7.0/24      list=TORRENTS
+add address=104.21.12.0/24     list=TORRENTS
+add address=104.21.32.0/24     list=TORRENTS
+add address=104.21.95.0/24     list=TORRENTS
+add address=168.119.95.0/24    list=TORRENTS
+add address=172.67.136.0/24    list=TORRENTS
+add address=172.67.144.0/24    list=TORRENTS
+add address=172.67.153.0/24    list=TORRENTS
+add address=172.67.182.0/24    list=TORRENTS
+add address=185.81.128.0/24    list=TORRENTS
+add address=188.114.96.0/23    list=TORRENTS
+add address=188.137.178.0/24   list=TORRENTS
+add address=193.46.255.0/24    list=TORRENTS
 
 /ip firewall address-list
 remove [find dynamic=no list=TWITTER]
