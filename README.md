@@ -110,7 +110,7 @@ modprobe amneziawg  2>/dev/null
  - Import configuration: **Load configuration..**
  - Скачиваем конфиг AmneziaWG с сайта [WARP Генератор](https://warp-generator.github.io/) или вставляем свой в пустое поле.
  - **Import settings** -> **OK**.
- - **Save & Apply**.
+ - **Save** -> **Save & Apply**.
 
 4. **Настраиваем Firewall и маршруты**
 
@@ -120,13 +120,13 @@ modprobe amneziawg  2>/dev/null
 uci -q get firewall.@zone[1].network|grep -q 'awg0' || uci add_list firewall.@zone[1].network='awg0'
 
 ### Добавляем маршрут по умолчанию через AmneziaWG:
-### Network -> Routing -> Add Interface: awg0, Route type: unicast, Target: 0.0.0.0/0
+### Network -> Routing -> Add -> Interface: awg0, Route type: unicast, Target: 0.0.0.0/0
 uci set network.defroute_awg=route
 uci set network.defroute_awg.interface='awg0'
 uci set network.defroute_awg.target='0.0.0.0/0'
 
 ### Добавляем маршрут к LAN, которая находится за OpenWrt (если такая есть):
-### Network -> Routing -> Add Interface: wan, Route type: unicast, Target: 10.0.0.0/8
+### Network -> Routing -> Add -> Interface: wan, Route type: unicast, Target: 10.0.0.0/8
 uci set network.route_mikrotik=route
 uci set network.route_mikrotik.interface='wan'
 uci set network.route_mikrotik.target='10.0.0.0/8'
@@ -345,26 +345,28 @@ add address=185.76.151.0/24    list=TELEGRAM
 /ip firewall address-list
 remove [find dynamic=no list=TORRENTS]
 :delay 5s
-add address=3.135.72.0/24      list=TORRENTS
-add address=3.140.119.0/24     list=TORRENTS
-add address=5.45.74.0/24       list=TORRENTS
-add address=18.219.255.0/24    list=TORRENTS
-add address=37.1.219.0/24      list=TORRENTS
-add address=37.221.67.0/24     list=TORRENTS
-add address=45.137.66.0/24     list=TORRENTS
-add address=104.21.7.0/24      list=TORRENTS
-add address=104.21.12.0/24     list=TORRENTS
-add address=104.21.32.0/24     list=TORRENTS
-add address=104.21.95.0/24     list=TORRENTS
-add address=168.119.95.0/24    list=TORRENTS
-add address=172.67.136.0/24    list=TORRENTS
-add address=172.67.144.0/24    list=TORRENTS
-add address=172.67.153.0/24    list=TORRENTS
-add address=172.67.182.0/24    list=TORRENTS
-add address=185.81.128.0/24    list=TORRENTS
-add address=188.114.96.0/23    list=TORRENTS
-add address=188.137.178.0/24   list=TORRENTS
-add address=193.46.255.0/24    list=TORRENTS
+add address=3.135.72.151       list=TORRENTS
+add address=3.140.119.203      list=TORRENTS
+add address=5.45.74.7          list=TORRENTS
+add address=18.219.255.217     list=TORRENTS
+add address=37.1.219.253       list=TORRENTS
+add address=37.221.67.160      list=TORRENTS
+add address=45.137.66.127      list=TORRENTS
+add address=104.21.7.164       list=TORRENTS
+add address=104.21.12.243      list=TORRENTS
+add address=104.21.32.39       list=TORRENTS
+add address=104.21.95.93       list=TORRENTS
+add address=168.119.95.238     list=TORRENTS
+add address=172.67.136.246     list=TORRENTS
+add address=172.67.144.20      list=TORRENTS
+add address=172.67.153.242     list=TORRENTS
+add address=172.67.182.196     list=TORRENTS
+add address=185.81.128.108     list=TORRENTS
+add address=188.114.96.1       list=TORRENTS
+add address=188.114.97.1       list=TORRENTS
+add address=188.137.178.236    list=TORRENTS
+add address=193.46.255.26      list=TORRENTS
+add address=193.46.255.28/31   list=TORRENTS
 
 /ip firewall address-list
 remove [find dynamic=no list=TWITTER]
