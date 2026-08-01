@@ -62,8 +62,14 @@ grep -q "net.ipv6.conf.default.disable_ipv6=1" /etc/sysctl.conf || echo "net.ipv
 grep -q "net.ipv6.conf.lo.disable_ipv6=1"      /etc/sysctl.conf || echo "net.ipv6.conf.lo.disable_ipv6=1"      >>/etc/sysctl.conf
 grep -q "net.ipv6.conf.br-lan.disable_ipv6=1"  /etc/sysctl.conf || echo "net.ipv6.conf.br-lan.disable_ipv6=1"  >>/etc/sysctl.conf
 
+# Устанавливаем часовой пояс
+# System -> System -> General Settings -> Timezone: Europa/Samara -> Save & Apply
+uci set system.@system[0].timezone='<+04>-4'
+uci set system.@system[0].zonename='Europe/Samara'
+
 ### Применяем изменения
 uci commit
+/etc/init.d/system   restart
 /etc/init.d/network  restart
 /etc/init.d/firewall restart
 sysctl -p -q
@@ -72,6 +78,7 @@ sysctl -p -q
 opkg remove --force-removal-of-dependent-packages odhcp6c odhcpd-ipv6only kmod-ip6tables kmod-nf-nat6 kmod-ipt-nat6 ip6tables luci-proto-ipv6 2>/dev/null
 
 ### Отключаем ненужные сервисы в автозагрузке:
+/etc/init.d/cron           stop 2>/dev/null && /etc/init.d/cron           disable
 /etc/init.d/wpad           stop 2>/dev/null && /etc/init.d/wpad           disable
 /etc/init.d/youtubeUnblock stop 2>/dev/null && /etc/init.d/youtubeUnblock disable
 ```
@@ -98,10 +105,8 @@ wget -qO /tmp/luci-proto-amneziawg.ipk "https://github.com/Slava-Shchipunov/awg-
 
 rm -rf /tmp/opkg-lists/* /var/opkg-lists/*
 
-### Чтобы не перезагружаться, загружаем модули ядра и обновляем LuCI
-modprobe amneziawg  2>/dev/null
-/etc/init.d/rpcd   restart
-/etc/init.d/uhttpd restart
+### Перезагружаемся
+reboot
 ```
 
 3. **Настраиваем интерфейс AmneziaWG через веб-интерфейс**
