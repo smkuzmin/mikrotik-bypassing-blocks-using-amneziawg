@@ -62,7 +62,7 @@ grep -q "net.ipv6.conf.default.disable_ipv6=1" /etc/sysctl.conf || echo "net.ipv
 grep -q "net.ipv6.conf.lo.disable_ipv6=1"      /etc/sysctl.conf || echo "net.ipv6.conf.lo.disable_ipv6=1"      >>/etc/sysctl.conf
 grep -q "net.ipv6.conf.br-lan.disable_ipv6=1"  /etc/sysctl.conf || echo "net.ipv6.conf.br-lan.disable_ipv6=1"  >>/etc/sysctl.conf
 
-# Устанавливаем часовой пояс
+### Устанавливаем часовой пояс
 # System -> System -> General Settings -> Timezone: Europa/Samara -> Save & Apply
 uci set system.@system[0].timezone='<+04>-4'
 uci set system.@system[0].zonename='Europe/Samara'
@@ -92,20 +92,19 @@ opkg update
 ### Устанавливаем необходимые зависимости для AmneziaWG
 opkg install kmod-udptunnel4 kmod-udptunnel6 kmod-crypto-lib-chacha20poly1305 kmod-crypto-lib-curve25519 kmod-crypto-hash kmod-crypto-aead
 
-### Скачиваем пакеты AmneziaWG для OpenWrt 24.10.4:
-###  - kmod-amneziawg_v24.10.4_mips_24kc_ath79_mikrotik.ipk (модуль ядра)
-###  - amneziawg-tools_v24.10.4_mips_24kc_ath79_mikrotik.ipk (утилиты)
-###  - luci-proto-amneziawg_v24.10.4_mips_24kc_ath79_mikrotik.ipk (интеграция в веб-интерфейс LuCI)
-### и устанавливаем их: System -> Software -> Upload Package.. -> Browse.. -> Upload -> Install -> Dismiss
-wget -qO /tmp/kmod-amneziawg.ipk       "https://github.com/Slava-Shchipunov/awg-openwrt/releases/download/v24.10.4/kmod-amneziawg_v24.10.4_mips_24kc_ath79_mikrotik.ipk" && opkg install /tmp/kmod-amneziawg.ipk      ; rm -f /tmp/kmod-amneziawg.ipk
-
-wget -qO /tmp/amneziawg-tools.ipk      "https://github.com/Slava-Shchipunov/awg-openwrt/releases/download/v24.10.4/amneziawg-tools_v24.10.4_mips_24kc_ath79_mikrotik.ipk"     && opkg install /tmp/amneziawg-tools.ipk     ; rm -f /tmp/amneziawg-tools.ipk
-
-wget -qO /tmp/luci-proto-amneziawg.ipk "https://github.com/Slava-Shchipunov/awg-openwrt/releases/download/v24.10.4/luci-proto-amneziawg_v24.10.4_mips_24kc_ath79_mikrotik.ipk" && opkg install /tmp/luci-proto-amneziawg.ipk; rm -f /tmp/luci-proto-amneziawg.ipk
-
-rm -rf /tmp/opkg-lists/* /var/opkg-lists/*
+### Скачиваем и устанавливаем пакеты AmneziaWG для OpenWrt 24.10.4:
+# - kmod-amneziawg_v24.10.4_mips_24kc_ath79_mikrotik.ipk (модуль ядра)
+# - amneziawg-tools_v24.10.4_mips_24kc_ath79_mikrotik.ipk (утилиты)
+# - luci-proto-amneziawg_v24.10.4_mips_24kc_ath79_mikrotik.ipk (интеграция в веб-интерфейс LuCI)
+# System -> Software -> Upload Package.. -> Browse.. -> Upload -> Install -> Dismiss
+URL="https://github.com/Slava-Shchipunov/awg-openwrt/releases/download/v24.10.4"
+wget -qO /tmp/kmod-amneziawg.ipk "$URL/kmod-amneziawg_v24.10.4_mips_24kc_ath79_mikrotik.ipk" && opkg install /tmp/kmod-amneziawg.ipk
+wget -qO /tmp/amneziawg-tools.ipk "$URL/amneziawg-tools_v24.10.4_mips_24kc_ath79_mikrotik.ipk" && opkg install /tmp/amneziawg-tools.ipk
+wget -qO /tmp/luci-proto-amneziawg.ipk "$URL/luci-proto-amneziawg_v24.10.4_mips_24kc_ath79_mikrotik.ipk" && opkg install /tmp/luci-proto-amneziawg.ipk
+rm -f /tmp/*.ipk
 
 ### Перезагружаемся
+# System -> Reboot -> Perform reboot
 reboot
 ```
 
@@ -113,7 +112,7 @@ reboot
 
  - **Network** -> **Interfaces** -> **Add new interface..** -> Name: `awg0`, Protocol: `AmneziaWG VPN` -> **Create interface**.
  - Import configuration: **Load configuration..**
- - Скачиваем конфиг AmneziaWG с сайта [WARP Генератор](https://warp-generator.github.io/) или вставляем свой в пустое поле.
+ - Скачиваем конфиг AmneziaWG с сайта [WARP Генератор](https://warp-gen.github.io) или вставляем свой в пустое поле.
  - **Import settings** -> **OK**.
  - **Save** -> **Save & Apply**.
 
@@ -121,17 +120,21 @@ reboot
 
 ```bash
 ### Добавляем awg0 в зону WAN Firewall
-### Network -> Interfaces -> awg0 -> Edit -> Create / Assign firewall-zone: wan -> Save -> Save & Apply
+# Network -> Interfaces -> awg0 -> Edit -> Create / Assign firewall-zone: wan -> Save -> Save & Apply
 uci -q get firewall.@zone[1].network|grep -q 'awg0' || uci add_list firewall.@zone[1].network='awg0'
 
+### Устанавливаем Persistent Keepalive для поддержания NAT-сессии у провайдера
+# Network -> Interfaces -> awg0 -> Edit -> Peers -> Edit -> Persistent Keepalive: 25 -> Save -> Save -> Save & Apply
+uci set network.awg0.persistent_keepalive='25'
+
 ### Добавляем маршрут по умолчанию через AmneziaWG:
-### Network -> Routing -> Add -> Interface: awg0, Route type: unicast, Target: 0.0.0.0/0
+# Network -> Routing -> Add -> Interface: awg0, Route type: unicast, Target: 0.0.0.0/0
 uci set network.defroute_awg=route
 uci set network.defroute_awg.interface='awg0'
 uci set network.defroute_awg.target='0.0.0.0/0'
 
 ### Добавляем маршрут к LAN, которая находится за OpenWrt (если такая есть):
-### Network -> Routing -> Add -> Interface: wan, Route type: unicast, Target: 10.0.0.0/8
+# Network -> Routing -> Add -> Interface: wan, Route type: unicast, Target: 10.0.0.0/8
 uci set network.route_mikrotik=route
 uci set network.route_mikrotik.interface='wan'
 uci set network.route_mikrotik.target='10.0.0.0/8'
@@ -812,3 +815,4 @@ C:\>tracert googlevideo.com
  - [Диапазон IP-адресов Instagram, Netflix, ChatGPT, Youtube, Twitter](https://rockblack.su/vpn/dopolnitelno/diapazon-ip-adresov)
 
 ***
+
