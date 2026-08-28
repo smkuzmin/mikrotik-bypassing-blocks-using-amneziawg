@@ -2,11 +2,25 @@
 
 В связи с ужесточением блокировок приходится менять протокол VPN с **WireGuard** на **AmneziaWG**.
 
-В качестве роутера использую **MikroTik**, который не хотелось бы менять, но очень хотелось бы использовать туннель **AmneziaWG** на нём.
+В качестве *роутера* использую **MikroTik**, который не хотелось бы менять, но очень хотелось бы использовать с ним VPN-туннель **AmneziaWG**.
 
-Есть ещё один **MikroTik** (**hAP ac lite**), перепрошитый на **OpenWrt**. Туннель с **AmneziaWG** запустим на нём и используем в качестве VPN-шлюза. А роутер уже будет маршрутизировать нужный трафик в VPN-шлюз на **OpenWrt**.
+Я буду использовать в качестве *VPN-шлюза* с **AmneziaWG** еще один **MikroTik** прошитый в **OpenWrt**. Эта инструкция подойдет для моделей:
+- [RB951G-2HnD](https://mikrotik.wiki/wiki/MikroTik_RB951G-2HnD)
+- [RB951Ui-2HnD](https://mikrotik.wiki/wiki/MikroTik_RB951Ui-2HnD)
+- [RB952Ui-5ac2nD (hAP ac lite)](https://mikrotik.wiki/wiki/MikroTik_hAP_ac_lite_(RB952Ui-5ac2nD))
+- [RB2011UiAS-2HnD-IN](https://mikrotik.wiki/wiki/MikroTik_RB2011UiAS-2HnD-IN)
+- [RB2011UiAS-IN](https://mikrotik.wiki/wiki/MikroTik_RB2011UiAS-IN)
+- [RB2011iL-IN](https://mikrotik.wiki/wiki/MikroTik_RB2011iL-IN)
+- [RB2011iL-RM](https://mikrotik.wiki/wiki/MikroTik_RB2011iL-RM)
+- [RBwAPG-5HacT2HnD (wAP ac)](https://mikrotik.wiki/wiki/WAP_ac_BE_(RBwAPG-5HacT2HnD-BE))
+- [RBwAPG-5HacT2HnD-BE (wAP ac BE)](https://mikrotik.wiki/wiki/WAP_ac_BE_(RBwAPG-5HacT2HnD-BE))
+- [RB912UAG-2HPnD-OUT (BaseBox 2)](https://mikrotik.wiki/wiki/MikroTik_BaseBox_2_(RB912UAG-2HPnD-OUT))
+- [RB912UAG-5HPnD-OUT (BaseBox 5)](https://mikrotik.wiki/wiki/MikroTik_BaseBox_5_(RB912UAG-5HPnD-OUT))
+- [RB911G-5HPacD-NB (NetBox 5)](https://mikrotik.wiki/wiki/MikroTik_NetBox_5_(RB911G-5HPacD-NB))
 
-### Схема подключения VPN-шлюза (OpenWrt) к роутеру (RouterOS)
+Итак, мой *роутер* (**RouterOS**) будет маршрутизировать нужный трафик (**Telegram**, **YouTube**, и т.д.) в *VPN-шлюз* (**OpenWrt**).
+
+## Схема подключения к роутеру (RouterOS) VPN-шлюза (OpenWrt)
 
 ```
 [---------- RouterOS --------]        [-------- OpenWrt -------]
@@ -19,96 +33,198 @@
 
 ## Настройка VPN-шлюза (OpenWrt)
 
-1. **Подготавливаем дефолтную OpenWrt 24.10.4**
+
+### 1. Подключаем устройство
+
+1. Втыкаем **LAN**-кабель (на котором по DHCP раздается Интернет), в **WAN**-порт нашего устройства.
+2. Подключаем **LAN**-порт нашего устройства к ПК. Дефолтные настройки подключения **OpenWrt**:
+```ini
+WAN IP: Dynamic
+LAN IP: 192.168.1.1
+  USER: root
+  PASS:
+```
+3. Подключаемся к устройству по протоколу **SSH** через терминал [PuTTY](https://the.earth.li/~sgtatham/putty/latest/w32/putty.exe):
+```powershell
+   putty.exe 192.168.1.1 -l root
+```
+4. Следующие этапы подразумевают подключение к устройству через терминал и выполнение в нем указанных блоков кода.
+
+### 2. Сбрасываем OpenWrt к дефолтным настройкам и перезагружаемся
 
 ```bash
-### Разрешаем подключения на WAN-интерфейсе:
-### Network -> Firewall -> Zones -> на пересечении wan и Input выбираем accept и жмем Save & Apply.
-uci set firewall.@zone[1].input='ACCEPT'
+### Сбрасываем OpenWrt к дефолтным настройкам и перезагружаемся
+# System -> Backup / Flash Firmware -> Restore -> Reset to defaults -> Perform reset -> OK
+firstboot -y && reboot
+```
 
-### Отключаем IPv6: Отключаем DHCPv6-клиент на WAN
-uci delete dhcp.wan.dhcpv6 2>/dev/null
-uci delete dhcp.wan.ra     2>/dev/null
-uci set network.wan.ipv6='0'
-uci set network.wan.delegate='0'
+### 3. Подготавливаем дефолтную OpenWrt и перезагружаемся
 
-### Отключаем IPv6: Отключаем DHCPv6 и RA на LAN
-uci set dhcp.lan.dhcpv6='disabled'
-uci set dhcp.lan.ra='disabled'
-uci set dhcp.lan.ndp='disabled'
-uci set network.lan.delegate='0'
-
-### Отключаем IPv6: Удаляем IPv6-адреса с WAN
-uci delete network.wan.ip6addr   2>/dev/null
-uci delete network.wan.ip6prefix 2>/dev/null
-
-### Отключаем IPv6: Удаляем IPv6-адрес с LAN
-uci delete network.lan.ip6addr   2>/dev/null
-uci delete network.lan.ip6prefix 2>/dev/null
-
-### Отключаем IPv6: Удаляем IPv6-туннели
-uci delete network.wan6 2>/dev/null
-uci delete network.6in4 2>/dev/null
-uci delete network.6to4 2>/dev/null
-
-### Отключаем IPv6: Удаляем IPv6-правила в Firewall
-for rule in $(uci show firewall|grep "family='ipv6'"|cut -d'.' -f2|cut -d'=' -f1|sort -t'[' -k2 -rn); do uci delete firewall.$rule; done
-for rule in $(uci show firewall|grep "ip6proto="|cut -d'.' -f2|cut -d'=' -f1); do uci delete firewall.$rule.ip6proto; done
-for rule in $(uci show firewall|grep "@rule"|grep -v "family="|cut -d'[' -f2|cut -d']' -f1); do uci set firewall.@rule[$rule].family='ipv4'; done
-
-### Отключаем IPv6: Добавляем параметры в sysctl
-grep -q "net.ipv6.conf.all.disable_ipv6=1"     /etc/sysctl.conf || echo "net.ipv6.conf.all.disable_ipv6=1"     >>/etc/sysctl.conf
-grep -q "net.ipv6.conf.default.disable_ipv6=1" /etc/sysctl.conf || echo "net.ipv6.conf.default.disable_ipv6=1" >>/etc/sysctl.conf
-grep -q "net.ipv6.conf.lo.disable_ipv6=1"      /etc/sysctl.conf || echo "net.ipv6.conf.lo.disable_ipv6=1"      >>/etc/sysctl.conf
-grep -q "net.ipv6.conf.br-lan.disable_ipv6=1"  /etc/sysctl.conf || echo "net.ipv6.conf.br-lan.disable_ipv6=1"  >>/etc/sysctl.conf
+```bash
+### Устанавливаем английский язык интерфейса
+# System -> System -> Language and Style -> Language: English
+uci set luci.main.lang='en'
 
 ### Устанавливаем часовой пояс
-# System -> System -> General Settings -> Timezone: Europa/Samara -> Save & Apply
+# System -> System -> General Settings -> Timezone: Europe/Samara
 uci set system.@system[0].timezone='<+04>-4'
 uci set system.@system[0].zonename='Europe/Samara'
 
-### Применяем изменения
-uci commit
-/etc/init.d/system   restart
-/etc/init.d/network  restart
-/etc/init.d/firewall restart
-sysctl -p -q
+### Отключаем PoE-Out (чтобы порт не горел красным)
+grep -q 'gpio.*poe' /etc/rc.local || sed -i '/exit 0/i sleep 2; for f in /sys/class/gpio/*poe*/value; do echo 0 >$f; done' /etc/rc.local
 
-### Удаляем IPv6-пакеты
-opkg remove --force-removal-of-dependent-packages odhcp6c odhcpd-ipv6only kmod-ip6tables kmod-nf-nat6 kmod-ipt-nat6 ip6tables luci-proto-ipv6 2>/dev/null
+### Разрешаем подключения на WAN-интерфейсе
+# Network -> Firewall -> Zones -> at the intersection of wan and Input, select accept -> Save & Apply
+uci set firewall.@zone[1].input='ACCEPT'
 
-### Отключаем ненужные сервисы в автозагрузке:
+### Отключаем IPv6
+# Удаляем IPv6-туннели и интерфейсы
+# Network -> Interfaces -> удаляем WAN6, 6in4, 6to4
+uci -q delete network.wan6
+uci -q delete network.6in4
+uci -q delete network.6to4
+# Отключаем IPv6 на LAN-интерфейсе
+# Network -> Interfaces -> LAN -> Advanced Settings
+uci    set    network.lan.ipv6='off'
+uci    set    network.lan.delegate='0'
+uci -q delete network.lan.ip6assign
+uci -q delete network.lan.ip6addr
+uci -q delete network.lan.ip6prefix
+# Отключаем IPv6 на WAN-интерфейсе
+# Network -> Interfaces -> WAN -> Advanced Settings
+uci    set    network.wan.ipv6='0'
+uci    set    network.wan.delegate='0'
+uci -q delete network.wan.ip6addr
+uci -q delete network.wan.ip6prefix
+# Отключаем IPv6 в DHCP
+uci    set    dhcp.lan.dhcpv6='disabled'
+uci    set    dhcp.lan.ndp='disabled'
+uci    set    dhcp.lan.ra='disabled'
+uci -q delete dhcp.wan.dhcpv6
+uci -q delete dhcp.wan.ra
+# Удаляем IPv6-правила в Firewall
+for rule in $(uci show firewall|grep "family='ipv6'"|cut -d'.' -f2|cut -d'=' -f1|sort -t'[' -k2 -rn); do uci delete firewall.$rule; done
+for rule in $(uci show firewall|grep 'ip6proto='|cut -d'.' -f2|cut -d'=' -f1); do uci delete firewall.$rule.ip6proto; done
+for rule in $(uci show firewall|grep '@rule'|grep -v 'family='|cut -d'[' -f2|cut -d']' -f1); do uci set firewall.@rule[$rule].family='ipv4'; done
+# Отключаем IPv6 в sysctl
+grep -q 'net.ipv6.conf.all.disable_ipv6=1'     /etc/sysctl.conf || echo >>/etc/sysctl.conf 'net.ipv6.conf.all.disable_ipv6=1'
+grep -q 'net.ipv6.conf.default.disable_ipv6=1' /etc/sysctl.conf || echo >>/etc/sysctl.conf 'net.ipv6.conf.default.disable_ipv6=1'
+grep -q 'net.ipv6.conf.lo.disable_ipv6=1'      /etc/sysctl.conf || echo >>/etc/sysctl.conf 'net.ipv6.conf.lo.disable_ipv6=1'
+grep -q 'net.ipv6.conf.br-lan.disable_ipv6=1'  /etc/sysctl.conf || echo >>/etc/sysctl.conf 'net.ipv6.conf.br-lan.disable_ipv6=1'
+# Удаляем IPv6-пакеты (удаляем пакеты, и все зависящие от них)
+opkg remove --force-removal-of-dependent-packages odhcp6c
+opkg remove --force-removal-of-dependent-packages odhcpd-ipv6only
+opkg remove --force-removal-of-dependent-packages kmod-ip6tables
+opkg remove --force-removal-of-dependent-packages kmod-nf-nat6
+opkg remove --force-removal-of-dependent-packages kmod-ipt-nat6
+opkg remove --force-removal-of-dependent-packages ip6tables
+opkg remove --force-removal-of-dependent-packages luci-proto-ipv6
+
+### Удаляем ненужные пакеты (не обращая внимания на зависимости)
+# Оставляем в Services только:
+#  - Kernel Manager
+#  - QoS over Nftables
+#  - youtubeUnblock
+#  - Bandwith Monitor
+#  - Watchcat
+#  - Network Shares
+#  - Terminal
+#  - UPnP IGD & PCP
+opkg remove --force-depends adblock  luci-app-adblock
+opkg remove --force-depends aria2    luci-app-aria2
+opkg remove --force-depends ddns     luci-app-ddns
+opkg remove --force-depends hd-idle  luci-app-hd-idle
+opkg remove --force-depends minidlna luci-app-minidlna
+opkg remove --force-depends netdata  luci-app-netdata
+opkg remove --force-depends qos      luci-app-qos
+opkg remove --force-depends smartdns luci-app-smartdns
+
+### Отключаем ненужные сервисы в автозагрузке
+# System -> Startup:
+#
+# Pr  Имя              Описание                                   Можно ли отключать
+# --  ---------------  -----------------------------------------  -------------------------------------------------------------------------
+# 19  wpad             WPA-Enterprise / 802.1X                    Да, если используется только WPA2-Personal
+# 21  fa-fancontrol    Управление вентилятором                    Да, если роутер с пассивным охлаждением
+# 30  radius           RADIUS-клиент                              Да, если не корпоративная сеть 802.1X
+# 35  odhcpd           DHCPv6 и RA для IPv6                       Да, если IPv6 отключён (рекомендуется для youtubeUnblock)
+# 50  cron             Планировщик задач                          Да, если не используете расписания
+# 50  vsftpd           FTP-сервер                                 Да, если не используется FTP
+# 61  avahi-daemon     mDNS/Bonjour (локальное обнаружение)       Да, если не используете AirPlay/Chromecast discovery
+# 80  blockd           Авто-монтирование USB-накопителей          Да, если нет USB-дисков
+# 80  collectd         Сбор метрик для мониторинга                Да, если не используете внешние системы мониторинга
+# 94  miniupnpd        Автоматический проброс портов (UPnP)       Да, если не используете торренты или устройства, которые сами открывают порты (IP-камеры, NAS и т.п.)
+# 97  watchcat         Автоматическая перезагрузка при зависании  Да, если не используется Watchcat
+# 98  samba4           SMB-сервер для общего доступа к файлам     Да, если не расшариваете папки по сети
+# 99  wsdd2            Web Service Discovery для SMB              Да, если не нужен в Windows-сети
+# --  ---------------  -----------------------------------------  -------------------------------------------------------------------------
+# 50  sqm              Smart Queue Management (QoS)               Да, если не используете торренты/видеозвонки на перегруженном канале
+# 60  nlbwmon          Мониторинг трафика по хостам               Да, если не нужен Bandwith Monitor
+# 79  luci_statistics  Статистика в веб-интерфейсе                Да, если не смотрите графики в LuCI
+/etc/init.d/avahi-daemon   stop 2>/dev/null && /etc/init.d/avahi-daemon   disable
+/etc/init.d/blockd         stop 2>/dev/null && /etc/init.d/blockd         disable
+/etc/init.d/collectd       stop 2>/dev/null && /etc/init.d/collectd       disable
 /etc/init.d/cron           stop 2>/dev/null && /etc/init.d/cron           disable
+/etc/init.d/fa-fancontrol  stop 2>/dev/null && /etc/init.d/fa-fancontrol  disable
+/etc/init.d/miniupnpd      stop 2>/dev/null && /etc/init.d/miniupnpd      disable
+/etc/init.d/odhcpd         stop 2>/dev/null && /etc/init.d/odhcpd         disable
+/etc/init.d/radius         stop 2>/dev/null && /etc/init.d/radius         disable
+/etc/init.d/samba4         stop 2>/dev/null && /etc/init.d/samba4         disable
+/etc/init.d/vsftpd         stop 2>/dev/null && /etc/init.d/vsftpd         disable
+/etc/init.d/watchcat       stop 2>/dev/null && /etc/init.d/watchcat       disable
 /etc/init.d/wpad           stop 2>/dev/null && /etc/init.d/wpad           disable
+/etc/init.d/wsdd2          stop 2>/dev/null && /etc/init.d/wsdd2          disable
 /etc/init.d/youtubeUnblock stop 2>/dev/null && /etc/init.d/youtubeUnblock disable
-```
 
-2. **Устанавливаем клиента AmneziaWG на hAP ac lite, перепрошитый на OpenWrt 24.10.4**
-
-```bash
-### Обновляем списки пакетов
-opkg update
-
-### Устанавливаем необходимые зависимости для AmneziaWG
-opkg install kmod-udptunnel4 kmod-udptunnel6 kmod-crypto-lib-chacha20poly1305 kmod-crypto-lib-curve25519 kmod-crypto-hash kmod-crypto-aead
-
-### Скачиваем и устанавливаем пакеты AmneziaWG для OpenWrt 24.10.4:
-# - kmod-amneziawg_v24.10.4_mips_24kc_ath79_mikrotik.ipk (модуль ядра)
-# - amneziawg-tools_v24.10.4_mips_24kc_ath79_mikrotik.ipk (утилиты)
-# - luci-proto-amneziawg_v24.10.4_mips_24kc_ath79_mikrotik.ipk (интеграция в веб-интерфейс LuCI)
-# System -> Software -> Upload Package.. -> Browse.. -> Upload -> Install -> Dismiss
-URL="https://github.com/Slava-Shchipunov/awg-openwrt/releases/download/v24.10.4"
-wget -qO /tmp/kmod-amneziawg.ipk "$URL/kmod-amneziawg_v24.10.4_mips_24kc_ath79_mikrotik.ipk" && opkg install /tmp/kmod-amneziawg.ipk
-wget -qO /tmp/amneziawg-tools.ipk "$URL/amneziawg-tools_v24.10.4_mips_24kc_ath79_mikrotik.ipk" && opkg install /tmp/amneziawg-tools.ipk
-wget -qO /tmp/luci-proto-amneziawg.ipk "$URL/luci-proto-amneziawg_v24.10.4_mips_24kc_ath79_mikrotik.ipk" && opkg install /tmp/luci-proto-amneziawg.ipk
-rm -f /tmp/*.ipk
+### Применяем все изменения
+uci commit
+sysctl -p -q
 
 ### Перезагружаемся
 # System -> Reboot -> Perform reboot
 reboot
 ```
 
-3. **Настраиваем интерфейс AmneziaWG через веб-интерфейс**
+### 4. Устанавливаем клиент AmneziaWG и перезагружаемся
+
+```bash
+(
+  ### Обновляем списки пакетов
+  opkg update || { echo 'OPKG UPDATE ERROR'; exit 1; }
+
+  ### Устанавливаем необходимые зависимости для AmneziaWG
+  opkg install kmod-udptunnel4 kmod-udptunnel6 kmod-crypto-lib-chacha20poly1305 kmod-crypto-lib-curve25519 kmod-crypto-hash kmod-crypto-aead
+
+  ### Скачиваем и устанавливаем модуль ядра, утилиты и LuCI-интерфейс AmneziaWG для OpenWrt 24.10
+  # System -> Software -> Upload Package.. -> Browse.. -> kmod-amneziawg_v24.10.8_mips_24kc_ath79_mikrotik.ipk -> Upload -> Install -> Dismiss
+  # System -> Software -> Upload Package.. -> Browse.. -> amneziawg-tools_v24.10.8_mips_24kc_ath79_mikrotik.ipk -> Upload -> Install -> Dismiss
+  # System -> Software -> Upload Package.. -> Browse.. -> luci-proto-amneziawg_v24.10.8_mips_24kc_ath79_mikrotik.ipk -> Upload -> Install -> Dismiss
+   VERSION='24.10.8'
+  BASE_URL="https://github.com/Slava-Shchipunov/awg-openwrt/releases/download/v${VERSION}"
+      ARCH='mips_24kc_ath79_mikrotik'
+  pkg='kmod-amneziawg'
+  url="${BASE_URL}/${pkg}_v${VERSION}_${ARCH}.ipk"
+  wget -qO                     "/tmp/${pkg}.ipk" "${url}" || { echo "DOWNLOAD ERROR: ${url}"; exit 1; }
+  opkg install --force-depends "/tmp/${pkg}.ipk"          || { echo "INSTALL ERROR: ${pkg}" ; exit 1; }
+  rm -f                        "/tmp/${pkg}.ipk"
+  pkg='amneziawg-tools'
+  url="${BASE_URL}/${pkg}_v${VERSION}_${ARCH}.ipk"
+  wget -qO                     "/tmp/${pkg}.ipk" "${url}" || { echo "DOWNLOAD ERROR: ${url}"; exit 1; }
+  opkg install --force-depends "/tmp/${pkg}.ipk"          || { echo "INSTALL ERROR: ${pkg}" ; exit 1; }
+  rm -f                        "/tmp/${pkg}.ipk"
+  pkg='luci-proto-amneziawg'
+  url="${BASE_URL}/${pkg}_v${VERSION}_${ARCH}.ipk"
+  wget -qO                     "/tmp/${pkg}.ipk" "${url}" || { echo "DOWNLOAD ERROR: ${url}"; exit 1; }
+  opkg install --force-depends "/tmp/${pkg}.ipk"          || { echo "INSTALL ERROR: ${pkg}" ; exit 1; }
+  rm -f                        "/tmp/${pkg}.ipk"
+
+  ### Перезагружаемся
+  # System -> Reboot -> Perform reboot
+  reboot
+)
+```
+
+### 5. Настраиваем клиент AmneziaWG (через веб-интерфейс)
 
  - **Network** -> **Interfaces** -> **Add new interface..** -> Name: `awg0`, Protocol: `AmneziaWG VPN` -> **Create interface**
  - Import configuration: **Load configuration..**
@@ -118,48 +234,94 @@ reboot
  - **Peers** -> **Edit** -> Persistent Keepalive: `25`
  - **Save** -> **Save** -> **Save & Apply**
 
-4. **Настраиваем Firewall и маршруты**
+### 6. Донастраиваем клиент AmneziaWG и маршрутизацию для него
 
 ```bash
-### Добавляем awg0 в зону WAN Firewall
-# Network -> Interfaces -> awg0 -> Edit -> Create / Assign firewall-zone: wan -> Save -> Save & Apply
-uci -q get firewall.@zone[1].network|grep -q 'awg0' || uci add_list firewall.@zone[1].network='awg0'
+(
+  ### Добавляем awg0 в зону WAN Firewall
+  # Network -> Interfaces -> awg0 -> Edit -> Create / Assign firewall-zone: wan -> Save -> Save & Apply
+  uci -q get firewall.@zone[1].network|grep -q 'awg0' || uci add_list firewall.@zone[1].network='awg0'
 
-### Устанавливаем Persistent Keepalive для поддержания NAT-сессии у провайдера
-# Network -> Interfaces -> awg0 -> Edit -> Peers -> Edit -> Persistent Keepalive: 25 -> Save -> Save -> Save & Apply
-uci set network.awg0.persistent_keepalive='25'
+  ### Устанавливаем Persistent Keep Alive для поддержания NAT-сессии у провайдера
+  # Network -> Interfaces -> awg0 -> Edit -> Peers -> Edit -> Persistent Keep Alive: 25 -> Save -> Save -> Save & Apply
+  uci set network.awg0.persistent_keepalive='25'
+  uci -q get network.@amneziawg_awg0[0] >/dev/null && uci set network.@amneziawg_awg0[0].persistent_keepalive='25'
 
-### Добавляем маршрут по умолчанию через AmneziaWG:
-# Network -> Routing -> Add -> Interface: awg0, Route type: unicast, Target: 0.0.0.0/0
-uci set network.defroute_awg=route
-uci set network.defroute_awg.interface='awg0'
-uci set network.defroute_awg.target='0.0.0.0/0'
+  ### Применяем изменения
+  uci commit
+  ifdown awg0; sleep 3; ifup awg0
 
-### Добавляем маршрут к LAN, которая находится за OpenWrt (если такая есть):
-# Network -> Routing -> Add -> Interface: wan, Route type: unicast, Target: 10.0.0.0/8
-uci set network.route_mikrotik=route
-uci set network.route_mikrotik.interface='wan'
-uci set network.route_mikrotik.target='10.0.0.0/8'
+  ### Проверяем, что VPN-туннель поднят (ждем до 30 секунд)
+  for i in $(seq 1 30); do sleep 1; awg show awg0 2>/dev/null | grep -q 'handshake' && break; done
+  awg show awg0 | grep -q 'handshake' || { echo 'ERROR: awg0 - no handshake! Check VPN connection'; exit 1; }
 
-### Применяем изменения
-uci commit network
-uci commit firewall
-/etc/init.d/network  restart
-/etc/init.d/firewall restart
-sleep 5
+  ### Добавляем маршрут по умолчанию через awg0 в таблице 100
+  # Network -> Routing -> Add -> Interface: awg0, Route type: unicast, Target: 0.0.0.0/0 -> Advanced Settings -> Table: 100 -> Save -> Save & Apply
+  # Перед добавлением: Удаление всех старых маршрутов через интерфейс awg0
+  uci show network | grep 'route.*awg0' | cut -d. -f2 | sort -Vr | while read r; do uci -q delete network.$r; done
+  uci add network route >/dev/null
+  uci set network.@route[-1].interface='awg0'
+  uci set network.@route[-1].target='0.0.0.0/0'
+  uci set network.@route[-1].table='100'
 
-### Проверяем интерфейс AmneziaWG
-awg show
+  ### Добавляем правила с высшим приоритетом: Локальный трафик (LAN -> LAN) отправляем в таблицу main
+  # Перед добавлением: Удаление всех старых правил для входящего интерфейса lan
+  uci show network | grep "rule.*\.in='lan'" | cut -d. -f2 | sort -Vr | while read r; do uci -q delete network.$r; done
+  uci add network rule >/dev/null
+  uci set network.@rule[-1].in='lan'
+  uci set network.@rule[-1].dest='10.0.0.0/8'
+  uci set network.@rule[-1].lookup='main'
+  uci set network.@rule[-1].priority='10'
+  uci add network rule >/dev/null
+  uci set network.@rule[-1].in='lan'
+  uci set network.@rule[-1].dest='172.16.0.0/12'
+  uci set network.@rule[-1].lookup='main'
+  uci set network.@rule[-1].priority='10'
+  uci add network rule >/dev/null
+  uci set network.@rule[-1].in='lan'
+  uci set network.@rule[-1].dest='192.168.0.0/16'
+  uci set network.@rule[-1].lookup='main'
+  uci set network.@rule[-1].priority='10'
 
-### Проверяем маршруты
-route -n
+  ### Добавляем правило с низшим приоритетом: Остальной трафик (транзитный LAN -> Интернет) отправляем в таблицу 100
+  uci add network rule >/dev/null
+  uci set network.@rule[-1].in='lan'
+  uci set network.@rule[-1].lookup='100'
+  uci set network.@rule[-1].priority='20'
+
+  ### Применяем изменения
+  uci commit
+  /etc/init.d/network restart
+  /etc/init.d/firewall restart
+  sleep 15
+)
+```
+
+### 7. Проверяем ключевые настройки
+
+```bash
+(
+  check(){ r="31m[-]"; eval "$2" &>/dev/null && r="32m[+]"; printf "\033[1;%s\033[0m %s\n" "$r" "$1"; }
+  check "SYSTEM: IP forwarding включен"                                            "sysctl -n net.ipv4.ip_forward | grep 1"
+  check "VPN: Параметр Persistent Keep Alive установлен"                           "awg show awg0 | grep keepalive"
+  check "VPN: Интерфейс добавлен в зону wan"                                       "uci get firewall.@zone[1].network | grep awg0"
+  check "VPN: Соединение установлено"                                              "awg show awg0 | grep handshake"
+  check "ROUTES: Default route не через awg0 В таблице main"                       "ip route show table main | grep default | grep -v awg0"
+  check "ROUTES: Default route    через awg0 в таблице 100"                        "ip route show table 100  | grep default | grep    awg0"
+  check "ROUTES: Есть правило: Локальный трафик с lan направляется в таблицу main" "ip rule show | grep br-lan | grep '192.168.0.0/16'"
+  check "ROUTES: Есть правило: Интернет-трафик  с lan направляется в таблицу 100"  "ip rule show | grep br-lan | grep 'lookup 100'"
+  check "ROUTES: Трафик из LAN в Интернет идет через awg0"                         "ip route get 8.8.8.8 from 192.168.1.50 iif br-lan | grep awg0"
+  check "ROUTES: Локальный трафик из LAN остается в br-lan"                        "ip route get 192.168.1.50 from 192.168.1.100 iif br-lan | grep br-lan"
+  check "NTP: Синхронизация времени прошла успешно"                                "ntpd -4 -n -q -p pool.ntp.org"
+)
 ```
 
 ***
 
 ## Настройка роутера (RouterOS)
 
-1. **Создаем интерфейс bridge-awg и добавляем в него любой свободный порт**
+
+### 1. Создаем интерфейс bridge-awg и добавляем в него любой свободный порт
 
 ```bash
 /interface bridge
@@ -169,14 +331,14 @@ add name=bridge-awg
 add bridge=bridge-awg interface=ether4
 ```
 
-2. **Назначаем IP-адрес интерфейсу bridge-awg**
+### 2. Назначаем IP-адрес интерфейсу bridge-awg
 
 ```bash
 /ip address
 add address=192.168.1.2/24 interface=bridge-awg
 ```
 
-3. **Создаем списки частных сетей и сетей заблокированных сервисов**
+### 3. Создаем списки частных сетей и сетей заблокированных сервисов
 
 ```bash
 /ip firewall address-list
@@ -570,7 +732,7 @@ add address=216.239.32.0/19    list=YOUTUBE
 add address=217.118.183.0/24   list=YOUTUBE
 ```
 
-4. **Создаем правила для доменов заблокированных сервисов**
+### 4. Создаем правила для доменов заблокированных сервисов
 
   Эти правила будут направлять нужные нам запросы вместе с поддоменами на DNS **77.88.8.88**, а полученные ответы автоматически заносить в соответствующие адрес-листы, где они будут жить до протухания кэша DNS.
 
@@ -731,14 +893,14 @@ add address-list=YOUTUBE forward-to=77.88.8.88 match-subdomain=yes name=ytimg.l.
 add address-list=YOUTUBE forward-to=77.88.8.88 match-subdomain=yes name=yting.com                            type=FWD
 ```
 
-5. **Создаем таблицу маршрутизации для VPN**
+### 5. Создаем таблицу маршрутизации для VPN
 
 ```bash
 /routing table
 add fib name=bypass-vpn
 ```
 
-6. **Создаем правила, маркирующие трафик к заблокированным сервисам**
+### 6. Создаем правила, маркирующие трафик к заблокированным сервисам
 
   Первое правило не позволит локальным адресам улететь в туннель.
 
@@ -757,7 +919,7 @@ add action=mark-connection chain=prerouting comment="MARK CONNECTIONS ALL FROM P
 add action=mark-routing    chain=prerouting comment="MARK ROUTING ALL FROM PRIVATE-LANS MARKED VPN-CONN AS BYPASS-VPN"        connection-mark=bypass-vpn-conn                                             new-routing-mark=bypass-vpn      passthrough=no  src-address-list=PRIVATE-LANS
 ```
 
-7. **Создаем правила, которые согласуют MTU с VPN-интерфейсом**
+### 7. Создаем правила, которые согласуют MTU с VPN-интерфейсом
 
 ```bash
 /ip firewall mangle
@@ -765,7 +927,7 @@ add action=change-mss chain=forward comment="CLAMP MSS FOR TCP SYN TO BYPASS-VPN
 add action=change-mss chain=forward comment="CLAMP MSS FOR TCP SYN FROM BYPASS-VPN" new-mss=clamp-to-pmtu  in-interface=bridge-awg passthrough=yes protocol=tcp tcp-flags=syn
 ```
 
-8. **Создаем правила маскарадинга для VPN-трафика**
+### 8. Создаем правила маскарадинга для VPN-трафика
 
 ```bash
 /ip firewall nat
@@ -773,16 +935,16 @@ add action=accept     chain=srcnat comment="ACCEPT ALL FROM PRIVATE-LANS TO PRIV
 add action=masquerade chain=srcnat comment="MASQ ALL FROM PRIVATE-LANS MARKED AS BYPASS-VPN --> BYPASS-VPN-IF" out-interface=bridge-awg routing-mark=bypass-vpn src-address-list=PRIVATE-LANS
 ```
 
-9. **Настраиваем маршрутизацию VPN-трафика через интерфейс bridge-awg**
+### 9. Настраиваем маршрутизацию VPN-трафика через интерфейс bridge-awg
 
 ```bash
 /ip route
 add dst-address=0.0.0.0/0 gateway=192.168.1.1 routing-table=bypass-vpn
 ```
 
-10. **Проверяем маршрутизацию с клиентского ПК**
+### 10. Проверяем маршрутизацию с клиентского ПК
 
-  Трассировка ya.ru после нашего роутера НЕ ДОЛЖНА проходить через хоп из сетей 192.168.1.0/24 и 10.8.1.0/24:
+  Трассировка `ya.ru` после нашего роутера **НЕ ДОЛЖНА** проходить через хоп из сетей `192.168.1.0/24` и `10.8.1.0/24`:
 ```powershell
 C:\>tracert ya.ru
 
@@ -793,7 +955,7 @@ C:\>tracert ya.ru
   2     7 ms     6 ms     6 ms  178.45.160.1
 ```
 
-  А трассировка googlevideo.com после нашего роутера ДОЛЖНА проходить через хопы из сетей 192.168.1.0/24 и 10.8.1.0/24:
+  А трассировка `googlevideo.com` после нашего роутера **ДОЛЖНА** проходить через хопы из сетей `192.168.1.0/24` и `10.8.1.0/24`:
 ```powershell
 C:\>tracert googlevideo.com
 
@@ -807,7 +969,9 @@ C:\>tracert googlevideo.com
 
   Если все так - поздравляю, вы сломали чебурнет!
 
-**Ссылки по теме:**
+***
+
+## Ссылки
 
  - [Смотрим рекламу на Youtube в 4K](https://telegra.ph/Smotrim-reklamu-na-Youtube-v-4K-08-12)
  - [Настройка клиента Wireguard на Mikrotik RouterOS для подключения к VPS, VDS серверу или готовой конфигурации](https://kiberlis.ru/mikrotik-wireguard-client)
@@ -815,5 +979,3 @@ C:\>tracert googlevideo.com
  - [Как определить оптимальный размер MTU?](https://help.keenetic.com/hc/ru/articles/214470885-%D0%9A%D0%B0%D0%BA-%D0%BE%D0%BF%D1%80%D0%B5%D0%B4%D0%B5%D0%BB%D0%B8%D1%82%D1%8C-%D0%BE%D0%BF%D1%82%D0%B8%D0%BC%D0%B0%D0%BB%D1%8C%D0%BD%D1%8B%D0%B9-%D1%80%D0%B0%D0%B7%D0%BC%D0%B5%D1%80-MTU)
  - [YouTube Blocked hosts in Russia](https://gist.github.com/MashinaMashina/58eed9128ade2c8ff50a84d523ae97d1#file-youtube-blocked-hosts-in-russia-md)
  - [Диапазон IP-адресов Instagram, Netflix, ChatGPT, Youtube, Twitter](https://rockblack.su/vpn/dopolnitelno/diapazon-ip-adresov)
-
-***
