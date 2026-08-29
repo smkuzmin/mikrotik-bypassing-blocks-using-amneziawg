@@ -326,22 +326,22 @@ reboot
 ```bash
 (
   check(){ r="31m[-]"; eval "$2" &>/dev/null && r="32m[+]"; printf "\033[1;%s\033[0m %s\n" "$r" "$1"; }
-  check "SYSTEM: IP forwarding включен"                                             "sysctl -n net.ipv4.ip_forward | grep 1"
-  check "VPN: Параметр Persistent Keep Alive установлен"                            "awg show awg0 | grep keepalive"
-  check "VPN: Интерфейс добавлен в зону wan"                                        "uci get firewall.@zone[1].network | grep awg0"
-  check "VPN: Соединение установлено"                                               "awg show awg0 | grep handshake"
-  check "ROUTES: Есть маршрут по умолчанию через wan  в таблице main"               "ip route show table main | grep default | grep    wan"
-  check "ROUTES: Нет маршрута по умолчанию через awg0 В таблице main"               "ip route show table main | grep default | grep -v awg0"
-  check "ROUTES: Есть маршрут по умолчанию через awg0 в таблице 100"                "ip route show table 100  | grep default | grep    awg0"
-  check "ROUTES: Есть правило: Трафик от клиентов в 10.0.0.0/8     => таблица main" "ip rule show | grep br-lan | grep '10.0.0.0/8.*main'"
-  check "ROUTES: Есть правило: Трафик от клиентов в 172.16.0.0/12  => таблица main" "ip rule show | grep br-lan | grep '172.16.0.0/12.*main'"
-  check "ROUTES: Есть правило: Трафик от клиентов в 192.168.0.0/16 => таблица main" "ip rule show | grep br-lan | grep '192.168.0.0/16.*main'"
-  check "ROUTES: Есть правило: Трафик от клиентов в Интернет       => таблица 100"  "ip rule show | grep br-lan | grep 'lookup 100'"
-  check "ROUTES:     Эмуляция: Трафик от клиентов в 10.0.0.0/8     => lan"          "ip route get 10.0.0.1    from 192.168.1.50 iif br-lan | grep br-lan"
-  check "ROUTES:     Эмуляция: Трафик от клиентов в 172.16.0.0/12  => lan"          "ip route get 172.16.0.1  from 192.168.1.50 iif br-lan | grep br-lan"
-  check "ROUTES:     Эмуляция: Трафик от клиентов в 192.168.0.0/16 => lan"          "ip route get 192.168.0.1 from 192.168.1.50 iif br-lan | grep br-lan"
-  check "ROUTES:     Эмуляция: Трафик от клиентов в Интернет       => awg0"         "ip route get 8.8.8.8     from 192.168.1.50 iif br-lan | grep awg0"
-  check "NTP: Синхронизация времени прошла успешно"                                 "ntpd -4 -n -q -p pool.ntp.org"
+  check "   ROUTING: Пересылка между интерфейсами включена"                              "sysctl -n net.ipv4.ip_forward | grep 1"
+  check " VPN / AWG: Параметр 'Persistent Keep Alive' задан"                             "awg show awg0 | grep keepalive"
+  check " VPN / AWG: Интерфейс AWG добавлен в зону WAN"                                  "uci get firewall.@zone[1].network | grep awg0"
+  check " VPN / AWG: Соединение установлено (есть handshake)"                            "awg show awg0 | grep handshake"
+  check " DEF ROUTE: Есть маршрут по умолчанию через инт. WAN в таб. main"               "ip route show table main | grep default | grep    wan"
+  check " DEF ROUTE: Нет маршрута по умолчанию через инт. AWG В таб. main"               "ip route show table main | grep default | grep -v awg0"
+  check " DEF ROUTE: Есть маршрут по умолчанию через инт. AWG в таб. 100"                "ip route show table 100  | grep default | grep    awg0"
+  check "ROUTE RULE: Есть правило: Трафик от клиентов в 10.0.0.0/8     => таб. main"     "ip rule show | grep br-lan | grep '10.0.0.0/8.*main'"
+  check "ROUTE RULE: Есть правило: Трафик от клиентов в 172.16.0.0/12  => таб. main"     "ip rule show | grep br-lan | grep '172.16.0.0/12.*main'"
+  check "ROUTE RULE: Есть правило: Трафик от клиентов в 192.168.0.0/16 => таб. main"     "ip rule show | grep br-lan | grep '192.168.0.0/16.*main'"
+  check "ROUTE RULE: Есть правило: Трафик от клиентов в Интернет       => таб. 100"      "ip rule show | grep br-lan | grep 'lookup 100'"
+  check " ROUTE GET: Проверка маршрута: Трафик от клиентов в 10.0.0.0/8     => инт. LAN" "ip route get 10.0.0.1    from 192.168.1.50 iif br-lan | grep br-lan"
+  check " ROUTE GET: Проверка маршрута: Трафик от клиентов в 172.16.0.0/12  => инт. LAN" "ip route get 172.16.0.1  from 192.168.1.50 iif br-lan | grep br-lan"
+  check " ROUTE GET: Проверка маршрута: Трафик от клиентов в 192.168.0.0/16 => инт. LAN" "ip route get 192.168.0.1 from 192.168.1.50 iif br-lan | grep br-lan"
+  check " ROUTE GET: Проверка маршрута: Трафик от клиентов в Интернет       => инт. AWG" "ip route get 8.8.8.8     from 192.168.1.50 iif br-lan | grep awg0"
+  check "  NTP SYNC: Синхронизация времени с pool.ntp.org прошла успешно"                "ntpd -4 -n -q -p pool.ntp.org"
 )
 ```
 
