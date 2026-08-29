@@ -190,14 +190,21 @@ reboot
 ```bash
 (
   ### Обновляем списки пакетов
+  # System -> Software -> Update lists..
   opkg update || { echo 'OPKG UPDATE ERROR'; exit 1; }
 
   ### Устанавливаем необходимые зависимости для AmneziaWG
+  # System -> Software -> Download and install package: kmod-udptunnel4                  -> OK -> Install -> Dismiss
+  # System -> Software -> Download and install package: kmod-udptunnel6                  -> OK -> Install -> Dismiss
+  # System -> Software -> Download and install package: kmod-crypto-lib-chacha20poly1305 -> OK -> Install -> Dismiss
+  # System -> Software -> Download and install package: kmod-crypto-lib-curve25519       -> OK -> Install -> Dismiss
+  # System -> Software -> Download and install package: kmod-crypto-hash                 -> OK -> Install -> Dismiss
+  # System -> Software -> Download and install package: kmod-crypto-aead                 -> OK -> Install -> Dismiss
   opkg install kmod-udptunnel4 kmod-udptunnel6 kmod-crypto-lib-chacha20poly1305 kmod-crypto-lib-curve25519 kmod-crypto-hash kmod-crypto-aead
 
   ### Скачиваем и устанавливаем модуль ядра, утилиты и LuCI-интерфейс AmneziaWG для OpenWrt 24.10
-  # System -> Software -> Upload Package.. -> Browse.. -> kmod-amneziawg_v24.10.8_mips_24kc_ath79_mikrotik.ipk -> Upload -> Install -> Dismiss
-  # System -> Software -> Upload Package.. -> Browse.. -> amneziawg-tools_v24.10.8_mips_24kc_ath79_mikrotik.ipk -> Upload -> Install -> Dismiss
+  # System -> Software -> Upload Package.. -> Browse.. -> kmod-amneziawg_v24.10.8_mips_24kc_ath79_mikrotik.ipk       -> Upload -> Install -> Dismiss
+  # System -> Software -> Upload Package.. -> Browse.. -> amneziawg-tools_v24.10.8_mips_24kc_ath79_mikrotik.ipk      -> Upload -> Install -> Dismiss
   # System -> Software -> Upload Package.. -> Browse.. -> luci-proto-amneziawg_v24.10.8_mips_24kc_ath79_mikrotik.ipk -> Upload -> Install -> Dismiss
    VERSION='24.10.8'
   BASE_URL="https://github.com/Slava-Shchipunov/awg-openwrt/releases/download/v${VERSION}"
