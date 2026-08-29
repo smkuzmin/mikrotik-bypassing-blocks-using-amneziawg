@@ -242,7 +242,7 @@ reboot
   # Network -> Interfaces -> awg0 -> Edit -> Create / Assign firewall-zone: wan -> Save -> Save & Apply
   uci -q get firewall.@zone[1].network|grep -q 'awg0' || uci add_list firewall.@zone[1].network='awg0'
 
-  ### Устанавливаем Persistent Keep Alive для поддержания NAT-сессии у провайдера
+  ### Устанавливаем Persistent Keep Alive для поддержания NAT-сессии у провайдера, иначе handshake может не быть
   # Network -> Interfaces -> awg0 -> Edit -> Peers -> Edit -> Persistent Keep Alive: 25 -> Save -> Save -> Save & Apply
   uci set network.awg0.persistent_keepalive='25'
   uci -q get network.@amneziawg_awg0[0] >/dev/null && uci set network.@amneziawg_awg0[0].persistent_keepalive='25'
@@ -251,21 +251,38 @@ reboot
   uci commit
   ifdown awg0; sleep 3; ifup awg0
 
-  ### Проверяем, что VPN-туннель поднят (ждем до 30 секунд)
+  ### Проверяем, что AWG-туннель работает (ждем до 30 секунд)
   for i in $(seq 1 30); do sleep 1; awg show awg0 2>/dev/null | grep -q 'handshake' && break; done
-  awg show awg0 | grep -q 'handshake' || { echo 'ERROR: awg0 - no handshake! Check VPN connection'; exit 1; }
+  awg show awg0 2>/dev/null | grep -q 'handshake' || { echo 'ERROR: awg0 - no handshake! Check VPN connection'; exit 1; }
+
+  ### Настраиваем маршрутизацию
+  # Трафик от клиентов (in='lan') в приватные сети идет через LAN/WAN-интерфейсы. За это отвечают:
+  #   - правило с приоритетом 10: in='lan' -> 10.0.0.0/8     => таблица main
+  #   - правило с приоритетом 10: in='lan' -> 172.16.0.0/12  => таблица main
+  #   - правило с приоритетом 10: in='lan' -> 192.168.0.0/16 => таблица main
+  # Трафик от клиентов (in='lan') в Интернет идет через AWG-туннель. За это отвечают:
+  #   - правило c приоритетом 20: in='lan' -> ANY => таблица 100
+  #   - маршрут по умолчанию в таблице 100 через интерфейс awg0
+  # Трафик от самого роутера (in='lo') идет через LAN/WAN-интерфейсы (нужно для надежного обновления времени). За это отвечают:
+  #   - маршруты, создаваемые LAN/WAN-интерфейсами в таблице main
+  # Примечания:
+  #   in=''  - Входящий интерфейс, параметр UCI (конфигурация OpenWrt)
+  #   iif='' - Входящий интерфейс, параметр ядра Linux (то, что показывает ip rule show)
+  #   lan    - Логическое имя LAN-интерфейса в UCI (конфигурация OpenWrt)
+  #   br-lan - Физическое имя моста LAN-портов в ядре Linux (ip rule show покажет iif br-lan)
+  #   lo     - Loopback-интерфейс (трафик, генерируемый самим роутером)
 
   ### Добавляем маршрут по умолчанию через awg0 в таблице 100
   # Network -> Routing -> Add -> Interface: awg0, Route type: unicast, Target: 0.0.0.0/0 -> Advanced Settings -> Table: 100 -> Save -> Save & Apply
-  # Перед добавлением: Удаление всех старых маршрутов через интерфейс awg0
+  # Перед добавлением маршрута: Удаление всех старых маршрутов через интерфейс awg0
   uci show network | grep 'route.*awg0' | cut -d. -f2 | sort -Vr | while read r; do uci -q delete network.$r; done
   uci add network route >/dev/null
   uci set network.@route[-1].interface='awg0'
   uci set network.@route[-1].target='0.0.0.0/0'
   uci set network.@route[-1].table='100'
 
-  ### Добавляем правила с высшим приоритетом: Локальный трафик (LAN -> LAN) отправляем в таблицу main
-  # Перед добавлением: Удаление всех старых правил для входящего интерфейса lan
+  ### Добавляем правила с приоритетом 10: Трафик от клиентов (in='lan' -> приватные сети) отправляем в таблицу main (в LAN/WAN-интерфейсы)
+  # Перед добавлением правил: Удаление всех старых правил для входящего интерфейса in='lan'
   uci show network | grep "rule.*\.in='lan'" | cut -d. -f2 | sort -Vr | while read r; do uci -q delete network.$r; done
   uci add network rule >/dev/null
   uci set network.@rule[-1].in='lan'
@@ -283,7 +300,7 @@ reboot
   uci set network.@rule[-1].lookup='main'
   uci set network.@rule[-1].priority='10'
 
-  ### Добавляем правило с низшим приоритетом: Остальной трафик (транзитный LAN -> Интернет) отправляем в таблицу 100
+  ### Добавляем правило с приоритетом 20: Остальной трафик (в Интернет) от клиентов (in='lan' -> ANY) отправляем в таблицу 100 (в AWG-туннель)
   uci add network rule >/dev/null
   uci set network.@rule[-1].in='lan'
   uci set network.@rule[-1].lookup='100'
