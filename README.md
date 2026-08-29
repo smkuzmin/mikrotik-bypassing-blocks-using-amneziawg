@@ -263,15 +263,15 @@ reboot
   awg show awg0 2>/dev/null | grep -q 'handshake' || { echo 'ERROR: awg0 - no handshake! Check VPN connection'; exit 1; }
 
   ### Настраиваем маршрутизацию
-  # Трафик от клиентов (in='lan') в приватные сети идет через LAN/WAN-интерфейсы. За это отвечают:
+  # Трафик от клиентов (in='lan') в приватные сети отправляем в таблицу main (LAN/WAN-интерфейсы). За это отвечают:
   #   - правило с приоритетом 10: in='lan' -> 10.0.0.0/8     => таблица main
   #   - правило с приоритетом 10: in='lan' -> 172.16.0.0/12  => таблица main
   #   - правило с приоритетом 10: in='lan' -> 192.168.0.0/16 => таблица main
-  # Трафик от клиентов (in='lan') в Интернет идет через AWG-туннель. За это отвечают:
+  # Остальной трафик (в Интернет) от клиентов (in='lan') отправляем в таблицу 100 (AWG-туннель). За это отвечают:
   #   - правило c приоритетом 20: in='lan' -> ANY => таблица 100
-  #   - маршрут по умолчанию в таблице 100 через интерфейс awg0
+  #   - маршрут по умолчанию через интерфейс awg0 в таблице 100
   # Трафик от самого роутера (in='lo') идет через LAN/WAN-интерфейсы (нужно для надежного обновления времени). За это отвечают:
-  #   - маршруты, создаваемые LAN/WAN-интерфейсами в таблице main
+  #   - маршруты, динамически создаваемые LAN/WAN-интерфейсами в таблице main
   # Примечания:
   #   in=''  - Входящий интерфейс, параметр UCI (конфигурация OpenWrt)
   #   iif='' - Входящий интерфейс, параметр ядра Linux (то, что показывает ip rule show)
@@ -279,7 +279,7 @@ reboot
   #   br-lan - Физическое имя моста LAN-портов в ядре Linux (ip rule show покажет iif br-lan)
   #   lo     - Loopback-интерфейс (трафик, генерируемый самим роутером)
 
-  ### Добавляем маршрут по умолчанию через awg0 в таблице 100
+  ### Добавляем маршрут по умолчанию через интерфейс awg0 в таблице 100
   # Network -> Routing -> Add -> Interface: awg0, Route type: unicast, Target: 0.0.0.0/0 -> Advanced Settings -> Table: 100 -> Save -> Save & Apply
   # Перед добавлением маршрута: Удаление всех старых маршрутов через интерфейс awg0
   uci show network | grep 'route.*awg0' | cut -d. -f2 | sort -Vr | while read r; do uci -q delete network.$r; done
@@ -288,7 +288,7 @@ reboot
   uci set network.@route[-1].target='0.0.0.0/0'
   uci set network.@route[-1].table='100'
 
-  ### Добавляем правила с приоритетом 10: Трафик от клиентов (in='lan' -> приватные сети) отправляем в таблицу main (в LAN/WAN-интерфейсы)
+  ### Добавляем правила с приоритетом 10: Трафик от клиентов (in='lan') в приватные сети отправляем в таблицу main (LAN/WAN-интерфейсы)
   # Перед добавлением правил: Удаление всех старых правил для входящего интерфейса in='lan'
   uci show network | grep "rule.*\.in='lan'" | cut -d. -f2 | sort -Vr | while read r; do uci -q delete network.$r; done
   uci add network rule >/dev/null
@@ -307,7 +307,7 @@ reboot
   uci set network.@rule[-1].lookup='main'
   uci set network.@rule[-1].priority='10'
 
-  ### Добавляем правило с приоритетом 20: Остальной трафик (в Интернет) от клиентов (in='lan' -> ANY) отправляем в таблицу 100 (в AWG-туннель)
+  ### Добавляем правило с приоритетом 20: Остальной трафик (в Интернет) от клиентов (in='lan') отправляем в таблицу 100 (AWG-туннель)
   uci add network rule >/dev/null
   uci set network.@rule[-1].in='lan'
   uci set network.@rule[-1].lookup='100'
@@ -330,14 +330,17 @@ reboot
   check "VPN: Параметр Persistent Keep Alive установлен"                            "awg show awg0 | grep keepalive"
   check "VPN: Интерфейс добавлен в зону wan"                                        "uci get firewall.@zone[1].network | grep awg0"
   check "VPN: Соединение установлено"                                               "awg show awg0 | grep handshake"
+  check "ROUTES: Есть маршрут по умолчанию через wan  в таблице main"               "ip route show table main | grep default | grep    wan"
   check "ROUTES: Нет маршрута по умолчанию через awg0 В таблице main"               "ip route show table main | grep default | grep -v awg0"
   check "ROUTES: Есть маршрут по умолчанию через awg0 в таблице 100"                "ip route show table 100  | grep default | grep    awg0"
   check "ROUTES: Есть правило: Трафик от клиентов в 10.0.0.0/8     => таблица main" "ip rule show | grep br-lan | grep '10.0.0.0/8.*main'"
   check "ROUTES: Есть правило: Трафик от клиентов в 172.16.0.0/12  => таблица main" "ip rule show | grep br-lan | grep '172.16.0.0/12.*main'"
   check "ROUTES: Есть правило: Трафик от клиентов в 192.168.0.0/16 => таблица main" "ip rule show | grep br-lan | grep '192.168.0.0/16.*main'"
   check "ROUTES: Есть правило: Трафик от клиентов в Интернет       => таблица 100"  "ip rule show | grep br-lan | grep 'lookup 100'"
-  check "ROUTES: Эмуляция: Трафик от клиентов в Интернет идет через awg0"           "ip route get 8.8.8.8 from 192.168.1.50 iif br-lan | grep awg0"
-  check "ROUTES: Эмуляция: Трафик между клиентами остается в LAN"                   "ip route get 192.168.1.50 from 192.168.1.100 iif br-lan | grep br-lan"
+  check "ROUTES:     Эмуляция: Трафик от клиентов в 10.0.0.0/8     => lan"          "ip route get 10.0.0.1    from 192.168.1.50 iif br-lan | grep br-lan"
+  check "ROUTES:     Эмуляция: Трафик от клиентов в 172.16.0.0/12  => lan"          "ip route get 172.16.0.1  from 192.168.1.50 iif br-lan | grep br-lan"
+  check "ROUTES:     Эмуляция: Трафик от клиентов в 192.168.0.0/16 => lan"          "ip route get 192.168.0.1 from 192.168.1.50 iif br-lan | grep br-lan"
+  check "ROUTES:     Эмуляция: Трафик от клиентов в Интернет       => awg0"         "ip route get 8.8.8.8     from 192.168.1.50 iif br-lan | grep awg0"
   check "NTP: Синхронизация времени прошла успешно"                                 "ntpd -4 -n -q -p pool.ntp.org"
 )
 ```
