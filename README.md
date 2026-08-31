@@ -263,8 +263,9 @@ reboot
   ifdown awg0; sleep 3; ifup awg0
 
   ### Проверяем, что AWG-туннель работает (ждем до 30 секунд)
-  for i in $(seq 1 30); do sleep 1; awg show awg0 2>/dev/null | grep -q 'handshake' && break; done
-  awg show awg0 2>/dev/null | grep -q 'handshake' || { echo 'ERROR: awg0 - no handshake! Check VPN connection'; exit 1; }
+  awg_is_alive() { awg show awg0 2>/dev/null|grep handshake|grep -qvi never; }
+  for i in $(seq 1 30); do sleep 1; awg_is_alive && break; done
+  awg_is_alive || { echo 'ERROR: awg0 - no handshake! Check VPN connection'; exit 1; }
 
   ### Настраиваем маршрутизацию
   # Трафик от клиентов (in='lan') в приватные сети отправляем в таблицу main (LAN/WAN-интерфейсы). За это отвечают:
@@ -331,7 +332,8 @@ reboot
   check "   ROUTING: Пересылка между интерфейсами включена"                         "sysctl -n net.ipv4.ip_forward|grep 1"
   check " VPN / AWG: Интерфейс AWG добавлен в зону WAN"                             "uci get firewall.@zone[1].network|grep awg0"
   check " VPN / AWG: Параметр 'Persistent Keep Alive' задан"                        "awg show awg0|grep keepalive"
-  check " VPN / AWG: Соединение установлено (есть handshake)"                       "awg show awg0|grep handshake"
+  check " VPN / AWG: Конфигурация импортирована (есть peer)"                        "uci show network|grep amneziawg_awg0"
+  check " VPN / AWG: Соединение установлено (есть handshake)"                       "awg show awg0|grep handshake|grep -vi never"
   check " DEF ROUTE: Есть маршрут по умолчанию через WAN, и он только в main"       "ip route show table all|grep 'default.*wan'|grep -v table"
   check " DEF ROUTE: Есть маршрут по умолчанию через AWG, и он только в 100"        "ip route show table all|grep 'default.*awg.*table 100\>'"
   check "ROUTE RULE: Есть правило: трафик от клиентов в 10.0.0.0/8     => main"     "ip rule show|grep br-lan|grep '10.0.0.0/8.*main'"
