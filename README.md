@@ -292,6 +292,9 @@ reboot
   uci set network.@route[-1].table='100'
 
   ### Добавляем правила с приоритетом 10: Трафик от клиентов (in='lan') в приватные сети отправляем в таблицу main (LAN/WAN-интерфейсы)
+  # Network -> Routing -> IPv4 Rules -> Add -> Priority: 10, Incoming interface: lan, Destination: 10.0.0.0/8     -> Save -> Save & Apply
+  # Network -> Routing -> IPv4 Rules -> Add -> Priority: 10, Incoming interface: lan, Destination: 172.16.0.0/12  -> Save -> Save & Apply
+  # Network -> Routing -> IPv4 Rules -> Add -> Priority: 10, Incoming interface: lan, Destination: 192.168.0.0/16 -> Save -> Save & Apply
   # Перед добавлением правил: Удаление всех старых правил для входящего интерфейса lan
   uci show network|grep "rule.*\.in='lan'"|cut -d. -f2|sort -Vr|while read r; do uci -q delete network.$r; done
   uci add network rule >/dev/null
@@ -311,6 +314,7 @@ reboot
   uci set network.@rule[-1].priority='10'
 
   ### Добавляем правило с приоритетом 20: Остальной трафик (в Интернет) от клиентов (in='lan') отправляем в таблицу 100 (AWG-туннель)
+  # Network -> Routing -> IPv4 Rules -> Add -> Priority: 20, Incoming interface: lan -> Advanced Settings -> Table: 100 -> Save -> Save & Apply
   uci add network rule >/dev/null
   uci set network.@rule[-1].in='lan'
   uci set network.@rule[-1].lookup='100'
