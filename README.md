@@ -249,7 +249,7 @@ reboot
 
 ```bash
 (
-  ### Добавляем awg0 в зону WAN Firewall
+  ### Добавляем интерфейс awg0 в зону WAN Firewall
   # Network -> Interfaces -> awg0 -> Edit -> Create / Assign firewall-zone: wan -> Save -> Save & Apply
   uci -q get firewall.@zone[1].network|grep -q 'awg0' || uci add_list firewall.@zone[1].network='awg0'
 
@@ -291,7 +291,7 @@ reboot
   uci set network.@route[-1].table='100'
 
   ### Добавляем правила с приоритетом 10: Трафик от клиентов (in='lan') в приватные сети отправляем в таблицу main (LAN/WAN-интерфейсы)
-  # Перед добавлением правил: Удаление всех старых правил для входящего интерфейса in='lan'
+  # Перед добавлением правил: Удаление всех старых правил для входящего интерфейса lan
   uci show network | grep "rule.*\.in='lan'" | cut -d. -f2 | sort -Vr | while read r; do uci -q delete network.$r; done
   uci add network rule >/dev/null
   uci set network.@rule[-1].in='lan'
