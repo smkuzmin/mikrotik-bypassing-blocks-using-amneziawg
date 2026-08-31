@@ -285,7 +285,7 @@ reboot
   ### Добавляем маршрут по умолчанию через интерфейс awg0 в таблице 100
   # Network -> Routing -> Add -> Interface: awg0, Route type: unicast, Target: 0.0.0.0/0 -> Advanced Settings -> Table: 100 -> Save -> Save & Apply
   # Перед добавлением маршрута: Удаление всех старых маршрутов через интерфейс awg0
-  uci show network | grep 'route.*awg0' | cut -d. -f2 | sort -Vr | while read r; do uci -q delete network.$r; done
+  uci show network|grep 'route.*awg0'|cut -d. -f2|sort -Vr|while read r; do uci -q delete network.$r; done
   uci add network route >/dev/null
   uci set network.@route[-1].interface='awg0'
   uci set network.@route[-1].target='0.0.0.0/0'
@@ -293,7 +293,7 @@ reboot
 
   ### Добавляем правила с приоритетом 10: Трафик от клиентов (in='lan') в приватные сети отправляем в таблицу main (LAN/WAN-интерфейсы)
   # Перед добавлением правил: Удаление всех старых правил для входящего интерфейса lan
-  uci show network | grep "rule.*\.in='lan'" | cut -d. -f2 | sort -Vr | while read r; do uci -q delete network.$r; done
+  uci show network|grep "rule.*\.in='lan'"|cut -d. -f2|sort -Vr|while read r; do uci -q delete network.$r; done
   uci add network rule >/dev/null
   uci set network.@rule[-1].in='lan'
   uci set network.@rule[-1].dest='10.0.0.0/8'
