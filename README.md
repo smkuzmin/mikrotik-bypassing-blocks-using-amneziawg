@@ -1,5 +1,6 @@
 ## MikroTik: Обход блокировок используя AmneziaWG
 
+
 В связи с ужесточением блокировок приходится менять протокол VPN с **WireGuard** на **AmneziaWG**.
 
 В качестве *роутера* использую **MikroTik**, который не хотелось бы менять, но очень хотелось бы использовать с ним VPN-туннель **AmneziaWG**.
@@ -340,8 +341,8 @@ reboot
   check " VPN / AWG: Параметр 'Persistent Keep Alive' включен"                      "uci get network.awg0.persistent_keepalive|grep '[1-9]'"
   check " VPN / AWG: Конфигурация импортирована (есть peer)"                        "uci show network|grep amneziawg_awg0"
   check " VPN / AWG: Соединение установлено (есть handshake)"                       "awg show awg0|grep handshake|grep -vi never"
-  check " DEF ROUTE: Есть маршрут по умолчанию через WAN, и он только в main"       "ip route show table all|grep 'default.*dev `wan`\>'|grep -v table"
-  check " DEF ROUTE: Есть маршрут по умолчанию через AWG, и он только в 100"        "ip route show table all|grep 'default.*awg.*table 100\>'"
+  check " DEF ROUTE: Есть маршрут по умолчанию через WAN, и он только в main"       "ip route show table all|grep 'default .* dev `wan`\>'|grep -v table"
+  check " DEF ROUTE: Есть маршрут по умолчанию через AWG, и он только в 100"        "ip route show table all|grep 'default dev awg0 table 100\>'"
   check "ROUTE RULE: Есть правило: трафик от клиентов в 10.0.0.0/8     => main"     "ip rule show|grep br-lan|grep '10.0.0.0/8.*main'"
   check "ROUTE RULE: Есть правило: трафик от клиентов в 172.16.0.0/12  => main"     "ip rule show|grep br-lan|grep '172.16.0.0/12.*main'"
   check "ROUTE RULE: Есть правило: трафик от клиентов в 192.168.0.0/16 => main"     "ip rule show|grep br-lan|grep '192.168.0.0/16.*main'"
