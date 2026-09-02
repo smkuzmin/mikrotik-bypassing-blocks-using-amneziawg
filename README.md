@@ -1,6 +1,5 @@
 ## MikroTik: Обход блокировок используя AmneziaWG
 
-
 В связи с ужесточением блокировок приходится менять протокол VPN с **WireGuard** на **AmneziaWG**.
 
 В качестве *роутера* использую **MikroTik**, который не хотелось бы менять, но очень хотелось бы использовать с ним VPN-туннель **AmneziaWG**.
@@ -71,7 +70,7 @@ uci set luci.main.lang='en'
 uci set system.@system[0].timezone='<+04>-4'
 uci set system.@system[0].zonename='Europe/Samara'
 
-### Отключаем PoE-Out (чтобы порт не горел красным) - добавляем команды (перед exit 0) в скрипт автозапуска
+### Отключаем PoE-Out на MiroTik (чтобы порт не горел красным) - добавляем команды (перед exit 0) в скрипт автозапуска
 # System -> Startup -> Local Startup:
 # sleep 2; for f in /sys/class/gpio/*poe*/value; do echo 0 >$f; done
 # exit 0
@@ -232,6 +231,7 @@ reboot
 
   ### Перезагружаемся
   # System -> Reboot -> Perform reboot
+  echo 'Installation succesfull. Rebooting...'
   reboot
 )
 ```
@@ -240,7 +240,7 @@ reboot
 
  - **Network** -> **Interfaces** -> **Add new interface..** -> Name: `awg0`, Protocol: `AmneziaWG VPN` -> **Create interface**
  - Import configuration: **Load configuration..**
- - Скачиваем конфиг AmneziaWG с сайта [WARP Генератор](https://warp-gen.github.io/) и вставляем содержимое в пустое поле
+ - Скачиваем конфиг AmneziaWG с сайта [WARP Генератор](https://warp-generation.github.io/) и вставляем содержимое в пустое поле
  - **Import settings** -> **OK**
  - **Firewall Settings** -> Create / Assign firewall-zone: `wan`
  - **Peers** -> **Edit** -> Persistent Keepalive: `25`
@@ -323,9 +323,9 @@ reboot
 
   ### Применяем изменения
   uci commit
-  /etc/init.d/network restart
-  /etc/init.d/firewall restart
-  sleep 15
+  /etc/init.d/network reload
+  /etc/init.d/firewall reload
+  sleep 5
 )
 ```
 
