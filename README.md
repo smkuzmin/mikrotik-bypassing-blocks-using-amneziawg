@@ -180,7 +180,7 @@ opkg remove --force-depends smartdns luci-app-smartdns
 /etc/init.d/wsdd2          stop 2>/dev/null && /etc/init.d/wsdd2          disable
 /etc/init.d/youtubeUnblock stop 2>/dev/null && /etc/init.d/youtubeUnblock disable
 
-### Применяем все изменения
+### Применяем изменения
 uci commit
 sysctl -p -q
 
@@ -195,7 +195,7 @@ reboot
 (
   ### Обновляем списки пакетов
   # System -> Software -> Update lists..
-  opkg update || { echo 'OPKG UPDATE ERROR'; exit 1; }
+  opkg update || { echo 'ERROR: opkg update'; exit 1; }
 
   ### Устанавливаем необходимые зависимости для AmneziaWG
   # System -> Software -> Download and install package: kmod-udptunnel4                  -> OK -> Install -> Dismiss
@@ -204,7 +204,8 @@ reboot
   # System -> Software -> Download and install package: kmod-crypto-lib-curve25519       -> OK -> Install -> Dismiss
   # System -> Software -> Download and install package: kmod-crypto-hash                 -> OK -> Install -> Dismiss
   # System -> Software -> Download and install package: kmod-crypto-aead                 -> OK -> Install -> Dismiss
-  opkg install kmod-udptunnel4 kmod-udptunnel6 kmod-crypto-lib-chacha20poly1305 kmod-crypto-lib-curve25519 kmod-crypto-hash kmod-crypto-aead
+  opkg install kmod-udptunnel4 kmod-udptunnel6 kmod-crypto-lib-chacha20poly1305 kmod-crypto-lib-curve25519 kmod-crypto-hash kmod-crypto-aead \
+  || { echo 'ERROR: opkg install AmneziaWG depends'; exit 1; }
 
   ### Скачиваем и устанавливаем модуль ядра, утилиты и LuCI-интерфейс AmneziaWG для OpenWrt 24.10
   # System -> Software -> Upload Package.. -> Browse.. -> kmod-amneziawg_v24.10.8_mips_24kc_ath79_mikrotik.ipk       -> Upload -> Install -> Dismiss
@@ -215,23 +216,23 @@ reboot
       ARCH='mips_24kc_ath79_mikrotik'
   pkg='kmod-amneziawg'
   url="${BASE_URL}/${pkg}_v${VERSION}_${ARCH}.ipk"
-  wget -qO                     "/tmp/${pkg}.ipk" "${url}" || { echo "DOWNLOAD ERROR: ${url}"; exit 1; }
-  opkg install --force-depends "/tmp/${pkg}.ipk"          || { echo "INSTALL ERROR: ${pkg}" ; exit 1; }
+  wget -qO                     "/tmp/${pkg}.ipk" "${url}" || { echo "ERROR: Download url: ${url}"; exit 1; }
+  opkg install --force-depends "/tmp/${pkg}.ipk"          || { echo "ERROR: Install pkg: ${pkg}" ; exit 1; }
   rm -f                        "/tmp/${pkg}.ipk"
   pkg='amneziawg-tools'
   url="${BASE_URL}/${pkg}_v${VERSION}_${ARCH}.ipk"
-  wget -qO                     "/tmp/${pkg}.ipk" "${url}" || { echo "DOWNLOAD ERROR: ${url}"; exit 1; }
-  opkg install --force-depends "/tmp/${pkg}.ipk"          || { echo "INSTALL ERROR: ${pkg}" ; exit 1; }
+  wget -qO                     "/tmp/${pkg}.ipk" "${url}" || { echo "ERROR: Download url: ${url}"; exit 1; }
+  opkg install --force-depends "/tmp/${pkg}.ipk"          || { echo "ERROR: Install pkg: ${pkg}" ; exit 1; }
   rm -f                        "/tmp/${pkg}.ipk"
   pkg='luci-proto-amneziawg'
   url="${BASE_URL}/${pkg}_v${VERSION}_${ARCH}.ipk"
-  wget -qO                     "/tmp/${pkg}.ipk" "${url}" || { echo "DOWNLOAD ERROR: ${url}"; exit 1; }
-  opkg install --force-depends "/tmp/${pkg}.ipk"          || { echo "INSTALL ERROR: ${pkg}" ; exit 1; }
+  wget -qO                     "/tmp/${pkg}.ipk" "${url}" || { echo "ERROR: Download url: ${url}"; exit 1; }
+  opkg install --force-depends "/tmp/${pkg}.ipk"          || { echo "ERROR: Install pkg: ${pkg}" ; exit 1; }
   rm -f                        "/tmp/${pkg}.ipk"
+  echo 'Installation succesfull. Rebooting...'
 
   ### Перезагружаемся
   # System -> Reboot -> Perform reboot
-  echo 'Installation succesfull. Rebooting...'
   reboot
 )
 ```
