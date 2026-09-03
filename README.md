@@ -70,7 +70,7 @@ uci set luci.main.lang='en'
 uci set system.@system[0].timezone='<+04>-4'
 uci set system.@system[0].zonename='Europe/Samara'
 
-### Отключаем PoE-Out на MiroTik (чтобы порт не горел красным) - добавляем команды (перед exit 0) в скрипт автозапуска
+### Отключаем PoE-Out на MikroTik (чтобы порт не горел красным) - добавляем команды (перед exit 0) в скрипт автозапуска
 # System -> Startup -> Local Startup:
 # sleep 2; for f in /sys/class/gpio/*poe*/value; do echo 0 >$f; done
 # exit 0
@@ -193,6 +193,10 @@ reboot
 
 ```bash
 (
+  ### Установка клиента AmneziaWG. Поддерживаемые устройства:
+  # - Любой MikroTik с архитектурой MIPSBE, прошитый в OpenWrt 24.10
+  # - Nano Pi R3S LTS c установленной FriendlyWrt 24.10
+
   ### Обновляем списки пакетов
   # System -> Software -> Update lists..
   opkg update || { echo 'ERROR: opkg update'; exit 1; }
@@ -207,28 +211,37 @@ reboot
   opkg install kmod-udptunnel4 kmod-udptunnel6 kmod-crypto-lib-chacha20poly1305 kmod-crypto-lib-curve25519 kmod-crypto-hash kmod-crypto-aead \
   || { echo 'ERROR: opkg install AmneziaWG depends'; exit 1; }
 
-  ### Скачиваем и устанавливаем модуль ядра, утилиты и LuCI-интерфейс AmneziaWG для OpenWrt 24.10
-  # System -> Software -> Upload Package.. -> Browse.. -> kmod-amneziawg_v24.10.8_mips_24kc_ath79_mikrotik.ipk       -> Upload -> Install -> Dismiss
-  # System -> Software -> Upload Package.. -> Browse.. -> amneziawg-tools_v24.10.8_mips_24kc_ath79_mikrotik.ipk      -> Upload -> Install -> Dismiss
-  # System -> Software -> Upload Package.. -> Browse.. -> luci-proto-amneziawg_v24.10.8_mips_24kc_ath79_mikrotik.ipk -> Upload -> Install -> Dismiss
-   VERSION='24.10.8'
-  BASE_URL="https://github.com/Slava-Shchipunov/awg-openwrt/releases/download/v${VERSION}"
-      ARCH='mips_24kc_ath79_mikrotik'
-  pkg='kmod-amneziawg'
-  url="${BASE_URL}/${pkg}_v${VERSION}_${ARCH}.ipk"
-  wget -qO                     "/tmp/${pkg}.ipk" "${url}" || { echo "ERROR: Download url: ${url}"; exit 1; }
-  opkg install --force-depends "/tmp/${pkg}.ipk"          || { echo "ERROR: Install pkg: ${pkg}" ; exit 1; }
-  rm -f                        "/tmp/${pkg}.ipk"
-  pkg='amneziawg-tools'
-  url="${BASE_URL}/${pkg}_v${VERSION}_${ARCH}.ipk"
-  wget -qO                     "/tmp/${pkg}.ipk" "${url}" || { echo "ERROR: Download url: ${url}"; exit 1; }
-  opkg install --force-depends "/tmp/${pkg}.ipk"          || { echo "ERROR: Install pkg: ${pkg}" ; exit 1; }
-  rm -f                        "/tmp/${pkg}.ipk"
-  pkg='luci-proto-amneziawg'
-  url="${BASE_URL}/${pkg}_v${VERSION}_${ARCH}.ipk"
-  wget -qO                     "/tmp/${pkg}.ipk" "${url}" || { echo "ERROR: Download url: ${url}"; exit 1; }
-  opkg install --force-depends "/tmp/${pkg}.ipk"          || { echo "ERROR: Install pkg: ${pkg}" ; exit 1; }
-  rm -f                        "/tmp/${pkg}.ipk"
+  ### Скачиваем и устанавливаем модуль ядра, утилиты и LuCI-интерфейс AmneziaWG
+  # System -> Software -> Upload Package.. -> Browse.. -> kmod-amneziawg_*.ipk       -> Upload -> Install -> Dismiss
+  # System -> Software -> Upload Package.. -> Browse.. -> amneziawg-tools_*.ipk      -> Upload -> Install -> Dismiss
+  # System -> Software -> Upload Package.. -> Browse.. -> luci-proto-amneziawg_*.ipk -> Upload -> Install -> Dismiss
+  download_and_install()
+  {
+    wget -qO "/tmp/$1.ipk" "$2" || { echo "ERROR: Download url: $2"; exit 1; }
+    opkg install --force-downgrade --force-depends "/tmp/$1.ipk" || { echo "ERROR: Install pkg: $1" ; exit 1; }
+    rm -f "/tmp/$1.ipk"
+  }
+  ARCH=$(opkg print-architecture|awk 'END{print $2}')
+  KERNEL=$(uname -r|cut -d. -f1,2)
+  case "$ARCH" in
+    mips_24kc)  # MikroTik на платформе MIPSBE
+      V='24.10.8'; B="https://github.com/Slava-Shchipunov/awg-openwrt/releases/download/v${V}"; A='mips_24kc_ath79_mikrotik'
+      download_and_install 'kmod-amneziawg'        "${B}/kmod-amneziawg_v${V}_${A}.ipk"
+      download_and_install 'amneziawg-tools'       "${B}/amneziawg-tools_v${V}_${A}.ipk"
+      download_and_install 'luci-proto-amneziawg'  "${B}/luci-proto-amneziawg_v${V}_${A}.ipk" ;;
+    aarch64_cortex-a53)  # NanoPi R3S LTS
+      case "$KERNEL" in
+        '6.1') KV='1.0.20260611'; KB="https://github.com/lastharbor/kmod-amneziawg-nanopi-r5c/releases/download/v${KV}-r1" ;;
+        '6.6') KV='3.1.20260812'; KB="https://github.com/lastharbor/kmod-amneziawg-nanopi-r5c/releases/download/v${KV}"    ;;
+            *) echo "ERROR: Unsupported kernel version: $KERNEL"; exit 1 ;;
+      esac
+      KV="$KV-r1"                                                                                ; KA='aarch64_generic'
+      UV='24.10.8'; UB="https://github.com/Slava-Shchipunov/awg-openwrt/releases/download/v${UV}"; UA='aarch64_generic_rockchip_armv8'
+      download_and_install 'kmod-amneziawg'       "${KB}/kmod-amneziawg_${KV}_${KA}.ipk"
+      download_and_install 'amneziawg-tools'      "${UB}/amneziawg-tools_v${UV}_${UA}.ipk"
+      download_and_install 'luci-proto-amneziawg' "${UB}/luci-proto-amneziawg_v${UV}_${UA}.ipk" ;;
+    *) echo "ERROR: Unsupported architecture: $ARCH"; exit 1 ;;
+  esac
   echo 'Installation succesfull. Rebooting...'
 
   ### Перезагружаемся
