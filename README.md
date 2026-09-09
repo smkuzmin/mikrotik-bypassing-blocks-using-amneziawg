@@ -5,6 +5,7 @@
 В качестве *роутера* использую **MikroTik**, который не хотелось бы менять, но очень хотелось бы использовать с ним VPN-туннель **AmneziaWG**.
 
 Я буду использовать в качестве *VPN-шлюза* с **AmneziaWG** еще один **MikroTik** прошитый в **OpenWrt**. Эта инструкция подойдет для моделей:
+
 - [RB951G-2HnD](https://mikrotik.wiki/wiki/MikroTik_RB951G-2HnD)
 - [RB951Ui-2HnD](https://mikrotik.wiki/wiki/MikroTik_RB951Ui-2HnD)
 - [RB952Ui-5ac2nD (hAP ac lite)](https://mikrotik.wiki/wiki/MikroTik_hAP_ac_lite_(RB952Ui-5ac2nD))
@@ -23,10 +24,10 @@
 ## Схема подключения к роутеру (RouterOS) VPN-шлюза (OpenWrt)
 
 ```
-[---------- RouterOS --------]        [-------- OpenWrt -------]
-[ bridge-wan:                ]        [                        ]
-[ bridge-lan:    10.x.y.1/24 ]  <==>  [ eth1  :    10.x.y.z/24 ]
-[ bridge-awg: 192.168.1.2/24 ]  <==>  [ br-lan: 192.168.1.1/24 ]
+[---------- RouterOS --------]                   [-------- OpenWrt -------]
+[ bridge-wan:                ] ether1            [                        ]
+[ bridge-lan:    10.x.y.1/24 ] ether5 <===> eth1 [ wan   :    10.x.y.z/24 ]
+[ bridge-awg: 192.168.1.2/24 ] ether4 <===> eth2 [ br-lan: 192.168.1.1/24 ]
 ```
 
 ***
@@ -48,7 +49,7 @@ LAN IP: 192.168.1.1
 ```powershell
    putty.exe 192.168.1.1 -l root
 ```
-4. Следующие этапы подразумевают подключение к устройству через терминал и выполнение в нем указанных блоков кода.
+Следующие этапы подразумевают подключение к устройству через терминал и выполнение в нем указанных блоков кода.
 
 ### 2. Сбрасываем OpenWrt к дефолтным настройкам и перезагружаемся
 
@@ -242,7 +243,7 @@ reboot
       download_and_install 'luci-proto-amneziawg' "${UB}/luci-proto-amneziawg_v${UV}_${UA}.ipk" ;;
     *) echo "ERROR: Unsupported architecture: $ARCH"; exit 1 ;;
   esac
-  echo 'Installation succesfull. Rebooting...'
+  echo 'Installation successful. Rebooting...'
 
   ### Перезагружаемся
   # System -> Reboot -> Perform reboot
@@ -956,10 +957,12 @@ add fib name=bypass-vpn
 ### 6. Создаем правила, маркирующие трафик к заблокированным сервисам
 
   Первое правило не позволит локальным адресам улететь в туннель.
+  Второе правило предотвращает петлю, если отправляемый в VPN-шлюз трафик возвращается обратно не через VPN-туннель.
 
 ```bash
 /ip firewall mangle
 add action=accept          chain=prerouting comment="ACCEPT ALL FROM PRIVATE-LANS TO PRIVATE-LANS"                            dst-address-list=PRIVATE-LANS src-address-list=PRIVATE-LANS
+add action=accept          chain=prerouting comment="ACCEPT ALL FROM OPENWRT WAN-IF (ETHER5) - PREVENT LOOP"                  in-bridge-port=ether5
 add action=mark-connection chain=prerouting comment="MARK CONNECTIONS ALL FROM PRIVATE-LANS TO CLOUDFLARE AS BYPASS-VPN-CONN" connection-mark=no-mark connection-state=new dst-address-list=CLOUDFLARE new-connection-mark=bypass-vpn-conn passthrough=yes src-address-list=PRIVATE-LANS
 add action=mark-connection chain=prerouting comment="MARK CONNECTIONS ALL FROM PRIVATE-LANS TO GOOGLEAI AS BYPASS-VPN-CONN"   connection-mark=no-mark connection-state=new dst-address-list=GOOGLEAI   new-connection-mark=bypass-vpn-conn passthrough=yes src-address-list=PRIVATE-LANS
 add action=mark-connection chain=prerouting comment="MARK CONNECTIONS ALL FROM PRIVATE-LANS TO GOOGLEPLAY AS BYPASS-VPN-CONN" connection-mark=no-mark connection-state=new dst-address-list=GOOGLEPLAY new-connection-mark=bypass-vpn-conn passthrough=yes src-address-list=PRIVATE-LANS
