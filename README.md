@@ -2,56 +2,76 @@
 
 В связи с ужесточением блокировок приходится менять протокол VPN с **WireGuard** на **AmneziaWG**.
 
-В качестве *роутера* использую **MikroTik**, который не хотелось бы менять, но очень хотелось бы использовать с ним VPN-туннель **AmneziaWG**.
+В качестве *роутера* использую **MikroTik**, который не хотелось бы менять, но очень хотелось бы использовать с ним VPN **AmneziaWG**.
 
-Я буду использовать в качестве *VPN-шлюза* с **AmneziaWG** еще один **MikroTik** прошитый в **OpenWrt**. Эта инструкция подойдет для моделей:
+**RouterOS** не поддерживает **AmneziaWG**, в отличие от **OpenWrt**. Поэтому в качестве *VPN-шлюза* я буду использовать еще один **MikroTik** прошитый в **OpenWrt**.
 
-- [RB951G-2HnD](https://mikrotik.wiki/wiki/MikroTik_RB951G-2HnD)
-- [RB951Ui-2HnD](https://mikrotik.wiki/wiki/MikroTik_RB951Ui-2HnD)
-- [RB952Ui-5ac2nD (hAP ac lite)](https://mikrotik.wiki/wiki/MikroTik_hAP_ac_lite_(RB952Ui-5ac2nD))
-- [RB2011UiAS-2HnD-IN](https://mikrotik.wiki/wiki/MikroTik_RB2011UiAS-2HnD-IN)
-- [RB2011UiAS-IN](https://mikrotik.wiki/wiki/MikroTik_RB2011UiAS-IN)
-- [RB2011iL-IN](https://mikrotik.wiki/wiki/MikroTik_RB2011iL-IN)
-- [RB2011iL-RM](https://mikrotik.wiki/wiki/MikroTik_RB2011iL-RM)
-- [RBwAPG-5HacT2HnD (wAP ac)](https://mikrotik.wiki/wiki/WAP_ac_BE_(RBwAPG-5HacT2HnD-BE))
-- [RBwAPG-5HacT2HnD-BE (wAP ac BE)](https://mikrotik.wiki/wiki/WAP_ac_BE_(RBwAPG-5HacT2HnD-BE))
-- [RB912UAG-2HPnD-OUT (BaseBox 2)](https://mikrotik.wiki/wiki/MikroTik_BaseBox_2_(RB912UAG-2HPnD-OUT))
-- [RB912UAG-5HPnD-OUT (BaseBox 5)](https://mikrotik.wiki/wiki/MikroTik_BaseBox_5_(RB912UAG-5HPnD-OUT))
-- [RB911G-5HPacD-NB (NetBox 5)](https://mikrotik.wiki/wiki/MikroTik_NetBox_5_(RB911G-5HPacD-NB))
+## VPN-шлюз: Поддерживаемые устройства
 
-Итак, мой *роутер* (**RouterOS**) будет маршрутизировать нужный трафик (**Telegram**, **YouTube**, и т.д.) в *VPN-шлюз* (**OpenWrt**).
+- **MikroTik** с архитектурой [MIPSBE](https://mikrotik.com/products/matrix) на **OpenWrt 24.10**:
+  - [RB951G-2HnD](https://mikrotik.wiki/wiki/MikroTik_RB951G-2HnD)
+  - [RB951Ui-2HnD](https://mikrotik.wiki/wiki/MikroTik_RB951Ui-2HnD)
+  - [RB952Ui-5ac2nD (hAP ac lite)](https://mikrotik.wiki/wiki/MikroTik_hAP_ac_lite_(RB952Ui-5ac2nD))
+  - [RB2011UiAS-2HnD-IN](https://mikrotik.wiki/wiki/MikroTik_RB2011UiAS-2HnD-IN)
+  - [RB2011UiAS-IN](https://mikrotik.wiki/wiki/MikroTik_RB2011UiAS-IN)
+  - [RB2011iL-IN](https://mikrotik.wiki/wiki/MikroTik_RB2011iL-IN)
+  - [RB2011iL-RM](https://mikrotik.wiki/wiki/MikroTik_RB2011iL-RM)
+  - [RBwAPG-5HacT2HnD (wAP ac)](https://mikrotik.wiki/wiki/WAP_ac_BE_(RBwAPG-5HacT2HnD-BE))
+  - [RBwAPG-5HacT2HnD-BE (wAP ac BE)](https://mikrotik.wiki/wiki/WAP_ac_BE_(RBwAPG-5HacT2HnD-BE))
+  - [RB912UAG-2HPnD-OUT (BaseBox 2)](https://mikrotik.wiki/wiki/MikroTik_BaseBox_2_(RB912UAG-2HPnD-OUT))
+  - [RB912UAG-5HPnD-OUT (BaseBox 5)](https://mikrotik.wiki/wiki/MikroTik_BaseBox_5_(RB912UAG-5HPnD-OUT))
+  - [RB911G-5HPacD-NB (NetBox 5)](https://mikrotik.wiki/wiki/MikroTik_NetBox_5_(RB911G-5HPacD-NB))
+- **Nano Pi R3S** на **OpenWrt 24.10** или **FriendlyWrt 24.10**
 
-## Схема подключения к роутеру (RouterOS) VPN-шлюза (OpenWrt)
+## Что получим в результате
+
+- Обход блокировок на уровне роутера - избавляемся от необходимости ставить **VPN** на каждое устройство.
+- **Telegram**, **YouTube**, **META**, **Viber**, **Cloudflare**, **Google AI**, **Torrents** -трафик идет в *VPN-шлюз*. Бесплатные конфигурации для **VPN** берем с сайта [WARP Генератор](https://warp-generation.github.io/).
+- **Трафик в остальной Интернет** уходит провайдеру.
+
+## Схема подключения
 
 ```
-[---------- RouterOS --------]                   [-------- OpenWrt -------]
-[ bridge-wan:                ] ether1            [                        ]
-[ bridge-lan:    10.x.y.1/24 ] ether5 <===> eth1 [ wan   :    10.x.y.z/24 ]
-[ bridge-awg: 192.168.1.2/24 ] ether4 <===> eth2 [ br-lan: 192.168.1.1/24 ]
+[-----------------------------]                   [-------------------------]
+[      Роутер (RouterOS)      ]                   [    VPN-шлюз (OpenWrt)   ]
+[-----------------------------]                   [-------------------------]
+[                : bridge-wan ] ether1            [        :                ]
+[ 10.x.y.1/24    : bridge-lan ] ether5 <===> eth1 [ wan    : 10.x.y.z/24    ]
+[ 192.168.1.2/24 : bridge-awg ] ether4 <===> eth2 [ br-lan : 192.168.1.1/24 ]
+[-----------------------------]                   [-------------------------]
 ```
 
 ***
 
-## Настройка VPN-шлюза (OpenWrt)
+## 1. Настройка VPN-шлюза (OpenWrt)
 
 
-### 1. Подключаем устройство
+### 1.1. Подключаем устройство
 
-1. Втыкаем **LAN**-кабель (на котором по DHCP раздается Интернет), в **WAN**-порт нашего устройства.
-2. Подключаем **LAN**-порт нашего устройства к ПК. Дефолтные настройки подключения **OpenWrt**:
-```ini
-WAN IP: Dynamic
-LAN IP: 192.168.1.1
-  USER: root
-  PASS:
-```
+1. Подключаем **LAN**-кабель (на котором по DHCP раздается Интернет), в **WAN**-порт нашего устройства.
+2. Подключаем **LAN**-порт нашего устройства к ПК. Дефолтные настройки подключения:
+
+|             | **OpenWrt**   | **FriendlyWrt** |
+| ----------- | ------------- | --------------- |
+| **WAN IP**: | Dynamic       | Dynamic         |
+| **LAN IP**: | `192.168.1.1` | `192.168.2.1`   |
+| **USER**:   | `root`        | `root`          |
+| **PASS**:   |               | `password`      |
+
 3. Подключаемся к устройству по протоколу **SSH** через терминал [PuTTY](https://the.earth.li/~sgtatham/putty/latest/w32/putty.exe):
-```powershell
-   putty.exe 192.168.1.1 -l root
-```
+
+  - Команда для **OpenWrt**:
+  ```powershell
+  putty.exe 192.168.1.1 -l root
+  ```
+  - Команда для **FriendlyWrt**:
+  ```powershell
+  putty.exe 192.168.2.1 -l root -pw password
+  ```
+
 Следующие этапы подразумевают подключение к устройству через терминал и выполнение в нем указанных блоков кода.
 
-### 2. Сбрасываем OpenWrt к дефолтным настройкам и перезагружаемся
+### 1.2. Сбрасываем OpenWrt (FriendlyWrt) к дефолтным настройкам и перезагружаемся
 
 ```bash
 ### Сбрасываем OpenWrt к дефолтным настройкам и перезагружаемся
@@ -59,7 +79,7 @@ LAN IP: 192.168.1.1
 firstboot -y && reboot
 ```
 
-### 3. Подготавливаем дефолтную OpenWrt и перезагружаемся
+### 1.3. Кастомизируем дефолтную OpenWrt (FriendlyWrt) и перезагружаемся
 
 ```bash
 ### Устанавливаем английский язык интерфейса
@@ -71,20 +91,17 @@ uci set luci.main.lang='en'
 uci set system.@system[0].timezone='<+04>-4'
 uci set system.@system[0].zonename='Europe/Samara'
 
-### Отключаем PoE-Out на MikroTik (чтобы порт не горел красным) - добавляем команды (перед exit 0) в скрипт автозапуска
-# System -> Startup -> Local Startup:
-# sleep 2; for f in /sys/class/gpio/*poe*/value; do echo 0 >$f; done
-# exit 0
-# -> Save -> Dismiss
+### Отключаем PoE-Out на MikroTik (чтобы порт не горел красным) - добавляем скрипт в rc.local
+# System -> Startup -> Local Startup -> insert SCRIPT before 'exit 0' -> Save -> Dismiss
 grep -q 'gpio.*poe' /etc/rc.local || sed -i '/exit 0/i sleep 2; for f in /sys/class/gpio/*poe*/value; do echo 0 >$f; done' /etc/rc.local
 
-### Разрешаем подключения на WAN-интерфейсе
-# Network -> Firewall -> Zones -> at the intersection of wan and Input, select accept -> Save & Apply
-uci set firewall.@zone[1].input='ACCEPT'
+### Разрешаем подключения на WAN-интерфейсе, если у него приватный IP
+# Network -> Firewall -> Zones -> at the intersection of 'wan' and 'Input', select 'accept' -> Save & Apply
+ifstatus wan|jsonfilter -e '@["ipv4-address"][0].address'|grep -Eq '^(10|172\.(1[6-9]|2[0-9]|3[0-1])|192\.168)\.' && uci set firewall.@zone[1].input='ACCEPT'
 
 ### Отключаем IPv6
 # Удаляем IPv6-туннели и интерфейсы
-# Network -> Interfaces -> удаляем WAN6, 6in4, 6to4
+# Network -> Interfaces -> remove WAN6, 6in4, 6to4
 uci -q delete network.wan6
 uci -q delete network.6in4
 uci -q delete network.6to4
@@ -190,14 +207,10 @@ sysctl -p -q
 reboot
 ```
 
-### 4. Устанавливаем клиент AmneziaWG и перезагружаемся
+### 1.4. Устанавливаем клиент AmneziaWG и перезагружаемся
 
 ```bash
 (
-  ### Установка клиента AmneziaWG. Поддерживаемые устройства:
-  # - Любой MikroTik с архитектурой MIPSBE, прошитый в OpenWrt 24.10
-  # - Nano Pi R3S LTS c установленной FriendlyWrt 24.10
-
   ### Обновляем списки пакетов
   # System -> Software -> Update lists..
   opkg update || { echo 'ERROR: opkg update'; exit 1; }
@@ -225,12 +238,17 @@ reboot
   ARCH=$(opkg print-architecture|awk 'END{print $2}')
   KERNEL=$(uname -r|cut -d. -f1,2)
   case "$ARCH" in
-    mips_24kc)  # MikroTik на платформе MIPSBE
+    mips_24kc)  # MikroTik с архитектурой MIPSBE на OpenWrt 24.10
       V='24.10.8'; B="https://github.com/Slava-Shchipunov/awg-openwrt/releases/download/v${V}"; A='mips_24kc_ath79_mikrotik'
-      download_and_install 'kmod-amneziawg'        "${B}/kmod-amneziawg_v${V}_${A}.ipk"
-      download_and_install 'amneziawg-tools'       "${B}/amneziawg-tools_v${V}_${A}.ipk"
-      download_and_install 'luci-proto-amneziawg'  "${B}/luci-proto-amneziawg_v${V}_${A}.ipk" ;;
-    aarch64_cortex-a53)  # NanoPi R3S LTS
+      download_and_install 'kmod-amneziawg'       "${B}/kmod-amneziawg_v${V}_${A}.ipk"
+      download_and_install 'amneziawg-tools'      "${B}/amneziawg-tools_v${V}_${A}.ipk"
+      download_and_install 'luci-proto-amneziawg' "${B}/luci-proto-amneziawg_v${V}_${A}.ipk" ;;
+    aarch64_generic)  # NanoPi R3S на OpenWrt 24.10
+      V='24.10.8'; B="https://github.com/Slava-Shchipunov/awg-openwrt/releases/download/v${V}"; A='aarch64_generic_rockchip_armv8'
+      download_and_install 'kmod-amneziawg'       "${B}/kmod-amneziawg_v${V}_${A}.ipk"
+      download_and_install 'amneziawg-tools'      "${B}/amneziawg-tools_v${V}_${A}.ipk"
+      download_and_install 'luci-proto-amneziawg' "${B}/luci-proto-amneziawg_v${V}_${A}.ipk" ;;
+    aarch64_cortex-a53)  # NanoPi R3S на FriendlyWrt 24.10
       case "$KERNEL" in
         '6.1') KV='1.0.20260611'; KB="https://github.com/lastharbor/kmod-amneziawg-nanopi-r5c/releases/download/v${KV}-r1" ;;
         '6.6') KV='3.1.20260812'; KB="https://github.com/lastharbor/kmod-amneziawg-nanopi-r5c/releases/download/v${KV}"    ;;
@@ -243,15 +261,15 @@ reboot
       download_and_install 'luci-proto-amneziawg' "${UB}/luci-proto-amneziawg_v${UV}_${UA}.ipk" ;;
     *) echo "ERROR: Unsupported architecture: $ARCH"; exit 1 ;;
   esac
-  echo 'Installation successful. Rebooting...'
 
   ### Перезагружаемся
   # System -> Reboot -> Perform reboot
+  echo 'Installation successful. Rebooting...'
   reboot
 )
 ```
 
-### 5. Настраиваем клиент AmneziaWG (через веб-интерфейс)
+### 1.5. Настраиваем клиент AmneziaWG (через веб-интерфейс)
 
  - **Network** -> **Interfaces** -> **Add new interface..** -> Name: `awg0`, Protocol: `AmneziaWG VPN` -> **Create interface**
  - Import configuration: **Load configuration..**
@@ -261,7 +279,7 @@ reboot
  - **Peers** -> **Edit** -> Persistent Keepalive: `25`
  - **Save** -> **Save** -> **Save & Apply**
 
-### 6. Донастраиваем клиент AmneziaWG и маршрутизацию для него
+### 1.6. Настраиваем маршрутизацию AmneziaWG
 
 ```bash
 (
@@ -340,42 +358,45 @@ reboot
   uci commit
   /etc/init.d/network reload
   /etc/init.d/firewall reload
-  sleep 5
+  ifdown awg0; sleep 3; ifup awg0
 )
 ```
 
-### 7. Проверяем ключевые настройки
+### 1.7. Проверяем ключевые настройки
 
 ```bash
 (
   check() { r='31m[-]'; eval "$2" &>/dev/null && r='32m[+]'; printf '\033[1;%s\033[0m %s\n' "$r" "$1"; }
   wan() { uci get network.wan.device || uci get network.wan.ifname || echo none; }
-  check "  INTERNET: Интернет доступен (ping 8.8.8.8)"                              "ping -c 1 -W 5 8.8.8.8"
-  check "   ROUTING: Пересылка между интерфейсами включена"                         "sysctl -n net.ipv4.ip_forward|grep 1"
-  check " VPN / AWG: Интерфейс AWG добавлен в зону WAN"                             "uci get firewall.@zone[1].network|grep awg0"
-  check " VPN / AWG: Параметр 'Persistent Keep Alive' включен"                      "uci get network.awg0.persistent_keepalive|grep '[1-9]'"
-  check " VPN / AWG: Конфигурация импортирована (есть peer)"                        "uci show network|grep amneziawg_awg0"
-  check " VPN / AWG: Соединение установлено (есть handshake)"                       "awg show awg0|grep handshake|grep -vi never"
-  check " DEF ROUTE: Есть маршрут по умолчанию через WAN, и он только в main"       "ip route show table all|grep 'default .* dev `wan`\>'|grep -v table"
-  check " DEF ROUTE: Есть маршрут по умолчанию через AWG, и он только в 100"        "ip route show table all|grep 'default dev awg0 table 100\>'"
-  check "ROUTE RULE: Есть правило: трафик от клиентов в 10.0.0.0/8     => main"     "ip rule show|grep br-lan|grep '10.0.0.0/8.*main'"
-  check "ROUTE RULE: Есть правило: трафик от клиентов в 172.16.0.0/12  => main"     "ip rule show|grep br-lan|grep '172.16.0.0/12.*main'"
-  check "ROUTE RULE: Есть правило: трафик от клиентов в 192.168.0.0/16 => main"     "ip rule show|grep br-lan|grep '192.168.0.0/16.*main'"
-  check "ROUTE RULE: Есть правило: трафик от клиентов в Интернет       => 100"      "ip rule show|grep br-lan|grep 'lookup 100\>'"
-  check " ROUTE GET: Проверка маршрута: трафик от клиентов в 10.0.0.0/8     => LAN" "ip route get 10.0.0.1    from 192.168.1.50 iif br-lan|grep br-lan"
-  check " ROUTE GET: Проверка маршрута: трафик от клиентов в 172.16.0.0/12  => LAN" "ip route get 172.16.0.1  from 192.168.1.50 iif br-lan|grep br-lan"
-  check " ROUTE GET: Проверка маршрута: трафик от клиентов в 192.168.0.0/16 => LAN" "ip route get 192.168.0.1 from 192.168.1.50 iif br-lan|grep br-lan"
-  check " ROUTE GET: Проверка маршрута: трафик от клиентов в Интернет       => AWG" "ip route get 8.8.8.8     from 192.168.1.50 iif br-lan|grep awg0"
-  check "  NTP SYNC: Время синхронизировано с pool.ntp.org"                         "ntpd -n -q -p pool.ntp.org"
+  check "      PING: Интернет (1.1.1.1) доступен"                               "ping -c 1 -W 5 1.1.1.1"
+  check "      PING: YouTube (8.8.8.8) доступен"                                "ping -c 1 -W 5 8.8.8.8"
+  check "   ROUTING: Пересылка между интерфейсами включена"                     "sysctl -n net.ipv4.ip_forward|grep 1"
+  check " VPN / AWG: Интерфейс AWG добавлен в зону WAN"                         "uci get firewall.@zone[1].network|grep awg0"
+  check " VPN / AWG: Параметр 'Persistent Keep Alive' включен"                  "uci get network.awg0.persistent_keepalive|grep '[1-9]'"
+  check " VPN / AWG: Конфигурация импортирована (есть peer)"                    "uci show network|grep amneziawg_awg0"
+  check " VPN / AWG: Соединение установлено (есть handshake)"                   "awg show awg0|grep handshake|grep -vi never"
+  check " DEF ROUTE: Есть маршрут по умолчанию: через WAN, и он только в main"  "ip route show table all|grep 'default .* dev `wan`\>'|grep -v table"
+  check " DEF ROUTE: Есть маршрут по умолчанию: через AWG, и он только в 100"   "ip route show table all|grep 'default dev awg0 table 100\>'"
+  check "ROUTE RULE: Есть правило: клиенты -> LAN (10.0.0.0/8)     => main"     "ip rule show|grep br-lan|grep '10.0.0.0/8.*main'"
+  check "ROUTE RULE: Есть правило: клиенты -> LAN (172.16.0.0/12)  => main"     "ip rule show|grep br-lan|grep '172.16.0.0/12.*main'"
+  check "ROUTE RULE: Есть правило: клиенты -> LAN (192.168.0.0/16) => main"     "ip rule show|grep br-lan|grep '192.168.0.0/16.*main'"
+  check "ROUTE RULE: Есть правило: клиенты -> YouTube (8.8.8.8)    => main"     "ip rule show|grep br-lan|grep '8.8.8.0/24.*main'"
+  check "ROUTE RULE: Есть правило: клиенты -> Интернет (1.1.1.1)   => 100"      "ip rule show|grep br-lan|grep 'lookup 100\>'"
+  check " ROUTE GET: Проверка маршрута: клиенты -> LAN (10.0.0.0/8)     => LAN" "ip route get 10.0.0.1    from 192.168.1.50 iif br-lan|grep br-lan"
+  check " ROUTE GET: Проверка маршрута: клиенты -> LAN (172.16.0.0/12)  => LAN" "ip route get 172.16.0.1  from 192.168.1.50 iif br-lan|grep br-lan"
+  check " ROUTE GET: Проверка маршрута: клиенты -> LAN (192.168.0.0/16) => LAN" "ip route get 192.168.0.1 from 192.168.1.50 iif br-lan|grep br-lan"
+  check " ROUTE GET: Проверка маршрута: клиенты -> YouTube (8.8.8.8)    => WAN" "ip route get 8.8.8.8     from 192.168.1.50 iif br-lan|grep -v awg0"
+  check " ROUTE GET: Проверка маршрута: клиенты -> Интернет (1.1.1.1)   => AWG" "ip route get 1.1.1.1     from 192.168.1.50 iif br-lan|grep awg0"
+  check "  NTP SYNC: Время синхронизировано с pool.ntp.org"                     "ntpd -n -q -p pool.ntp.org"
 )
 ```
 
 ***
 
-## Настройка роутера (RouterOS)
+## 2. Настройка роутера (RouterOS)
 
 
-### 1. Создаем интерфейс bridge-awg и добавляем в него любой свободный порт
+### 2.1. Создаем интерфейс bridge-awg и добавляем в него любой свободный порт
 
 ```bash
 /interface bridge
@@ -385,14 +406,14 @@ add name=bridge-awg
 add bridge=bridge-awg interface=ether4
 ```
 
-### 2. Назначаем IP-адрес интерфейсу bridge-awg
+### 2.2. Назначаем IP-адрес интерфейсу bridge-awg
 
 ```bash
 /ip address
 add address=192.168.1.2/24 interface=bridge-awg
 ```
 
-### 3. Создаем списки частных сетей и сетей заблокированных сервисов
+### 2.3. Создаем списки частных сетей и сетей заблокированных сервисов
 
 ```bash
 /ip firewall address-list
@@ -786,7 +807,7 @@ add address=216.239.32.0/19    list=YOUTUBE
 add address=217.118.183.0/24   list=YOUTUBE
 ```
 
-### 4. Создаем правила для доменов заблокированных сервисов
+### 2.4. Создаем правила для доменов заблокированных сервисов
 
   Эти правила будут направлять нужные нам запросы вместе с поддоменами на DNS **77.88.8.88**, а полученные ответы автоматически заносить в соответствующие адрес-листы, где они будут жить до протухания кэша DNS.
 
@@ -947,14 +968,14 @@ add address-list=YOUTUBE forward-to=77.88.8.88 match-subdomain=yes name=ytimg.l.
 add address-list=YOUTUBE forward-to=77.88.8.88 match-subdomain=yes name=yting.com                            type=FWD
 ```
 
-### 5. Создаем таблицу маршрутизации для VPN
+### 2.5. Создаем таблицу маршрутизации для VPN
 
 ```bash
 /routing table
 add fib name=bypass-vpn
 ```
 
-### 6. Создаем правила, маркирующие трафик к заблокированным сервисам
+### 2.6. Создаем правила, маркирующие трафик к заблокированным сервисам
 
   Первое правило не позволит локальным адресам улететь в туннель.
   Второе правило предотвращает петлю, если отправляемый в VPN-шлюз трафик возвращается обратно не через VPN-туннель.
@@ -975,7 +996,7 @@ add action=mark-connection chain=prerouting comment="MARK CONNECTIONS ALL FROM P
 add action=mark-routing    chain=prerouting comment="MARK ROUTING ALL FROM PRIVATE-LANS MARKED VPN-CONN AS BYPASS-VPN"        connection-mark=bypass-vpn-conn                                             new-routing-mark=bypass-vpn      passthrough=no  src-address-list=PRIVATE-LANS
 ```
 
-### 7. Создаем правила, которые согласуют MTU с VPN-интерфейсом
+### 2.7. Создаем правила, которые согласуют MTU с VPN-интерфейсом
 
 ```bash
 /ip firewall mangle
@@ -983,7 +1004,7 @@ add action=change-mss chain=forward comment="CLAMP MSS FOR TCP SYN TO BYPASS-VPN
 add action=change-mss chain=forward comment="CLAMP MSS FOR TCP SYN FROM BYPASS-VPN" new-mss=clamp-to-pmtu  in-interface=bridge-awg passthrough=yes protocol=tcp tcp-flags=syn
 ```
 
-### 8. Создаем правила маскарадинга для VPN-трафика
+### 2.8. Создаем правила маскарадинга для VPN-трафика
 
 ```bash
 /ip firewall nat
@@ -991,14 +1012,14 @@ add action=accept     chain=srcnat comment="ACCEPT ALL FROM PRIVATE-LANS TO PRIV
 add action=masquerade chain=srcnat comment="MASQ ALL FROM PRIVATE-LANS MARKED AS BYPASS-VPN --> BYPASS-VPN-IF" out-interface=bridge-awg routing-mark=bypass-vpn src-address-list=PRIVATE-LANS
 ```
 
-### 9. Настраиваем маршрутизацию VPN-трафика через интерфейс bridge-awg
+### 2.9. Настраиваем маршрутизацию VPN-трафика через интерфейс bridge-awg
 
 ```bash
 /ip route
 add dst-address=0.0.0.0/0 gateway=192.168.1.1 routing-table=bypass-vpn
 ```
 
-### 10. Проверяем маршрутизацию с клиентского ПК
+### 2.10. Проверяем маршрутизацию с клиентского ПК
 
   Трассировка `ya.ru` после нашего роутера **НЕ ДОЛЖНА** проходить через хоп из сетей `192.168.1.0/24` и `10.8.1.0/24`:
 ```powershell
