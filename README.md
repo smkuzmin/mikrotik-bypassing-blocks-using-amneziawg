@@ -1050,6 +1050,7 @@ C:\>tracert googlevideo.com
 
 ## Ссылки
 
+ - [MikroTik: Прошивка OpenWrt](https://github.com/smkuzmin/mikrotik-installing-openwrt)
  - [Смотрим рекламу на Youtube в 4K](https://telegra.ph/Smotrim-reklamu-na-Youtube-v-4K-08-12)
  - [Настройка клиента Wireguard на Mikrotik RouterOS для подключения к VPS, VDS серверу или готовой конфигурации](https://kiberlis.ru/mikrotik-wireguard-client)
  - [Wireguard в Mikrotik](https://www.youtube.com/live/eRcrZkwd5IM)
